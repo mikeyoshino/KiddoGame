@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KiddoGame</title>
+    <base href="/" />
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .game-card:active { transform: scale(0.95); }
+        .category-pill.active { background-color: #4F46E5; color: white; }
+    </style>
+    <HeadOutlet />
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

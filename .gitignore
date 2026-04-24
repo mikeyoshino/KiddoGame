@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+!.env.example
+
+# Test cache
+.pytest_cache/
+
+# Downloaded thumbnails (large binary files, generated at runtime)
+webapp/wwwroot/images/games/
+
+# .NET / Blazor build output
+webapp/bin/
+webapp/obj/
+webapp.Tests/bin/
+webapp.Tests/obj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db

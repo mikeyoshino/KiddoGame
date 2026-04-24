@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:gamedistribution.com)",
+      "Bash(mkdir -p \"C:/Users/Admin/gitrepos/Kiddo/scraper_service/sql\")",
+      "Bash(mkdir -p \"C:/Users/Admin/gitrepos/Kiddo/tests\")",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(cp:*)",
+      "Bash(powershell -Command \"Remove-Item -Recurse -Force 'C:\\\\Users\\\\Admin\\\\gitrepos\\\\Kiddo\\\\tests'\")",
+      "Bash(Select-String -NotMatch \"Import-Module|posh-git|CosmosDB|profile\")",
+      "Bash(dotnet --version)",
+      "Bash(dotnet --list-sdks)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet build:*)"
+    ]
+  }
+}

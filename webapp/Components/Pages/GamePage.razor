@@ -1,0 +1,154 @@
+@page "/games/{Slug}"
+@rendermode InteractiveServer
+@inject GameService GameSvc
+@inject NavigationManager Nav
+
+@if (_loading)
+{
+    <div class="flex justify-center items-center min-h-[60vh]">
+        <div class="text-slate-400 text-center">
+            <div class="text-6xl mb-4 animate-bounce">🎮</div>
+            <p class="animate-pulse">กำลังโหลด...</p>
+        </div>
+    </div>
+}
+else if (_game is null)
+{
+    <div class="flex justify-center items-center min-h-[60vh]">
+        <div class="text-center text-slate-400">
+            <div class="text-5xl mb-4">😕</div>
+            <p>ไม่พบเกมนี้</p>
+            <a href="/" class="mt-4 inline-block text-indigo-500">← กลับหน้าแรก</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="lg:grid lg:grid-cols-[1fr_280px] lg:gap-6">
+        <!-- Left: iframe + info -->
+        <div>
+            <!-- Game iframe -->
+            <div class="w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden mb-6 shadow-xl">
+                <iframe src="@_game.GameUrl"
+                        class="w-full h-full"
+                        allowfullscreen
+                        allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated; web-share">
+                </iframe>
+            </div>
+
+            <!-- Game Info -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm mb-6">
+                <h1 class="text-2xl font-bold mb-1">@_game.Title</h1>
+                @if (!string.IsNullOrEmpty(_game.Company))
+                {
+                    <p class="text-slate-400 text-sm mb-4">โดย @_game.Company</p>
+                }
+
+                @if (_game.Categories.Length > 0)
+                {
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        @foreach (var cat in _game.Categories)
+                        {
+                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium">@cat</span>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(_game.Description))
+                {
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">@_game.Description</p>
+                }
+
+                @if (!string.IsNullOrEmpty(_game.Instruction))
+                {
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <h3 class="font-semibold text-sm mb-2">วิธีเล่น</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">@_game.Instruction</p>
+                    </div>
+                }
+
+                @if (_game.Tags.Length > 0)
+                {
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        @foreach (var tag in _game.Tags)
+                        {
+                            <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs">#@tag</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Similar Games (mobile: below info) -->
+            @if (_similar.Count > 0)
+            {
+                <div class="lg:hidden mb-6">
+                    <h2 class="font-bold mb-4">เกมที่คล้ายกัน</h2>
+                    <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+                        @foreach (var g in _similar)
+                        {
+                            <a href="/games/@g.Slug" class="flex-shrink-0 w-32 group">
+                                <div class="bg-indigo-50 rounded-2xl aspect-square overflow-hidden mb-2">
+                                    @if (!string.IsNullOrEmpty(g.ThumbnailUrl))
+                                    {
+                                        <img src="@g.ThumbnailUrl" alt="@g.Title" class="w-full h-full object-cover" />
+                                    }
+                                    else
+                                    {
+                                        <div class="w-full h-full flex items-center justify-center text-3xl">🎮</div>
+                                    }
+                                </div>
+                                <p class="text-xs font-medium text-center truncate group-hover:text-indigo-600">@g.Title</p>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Right: Similar Games (desktop sidebar) -->
+        @if (_similar.Count > 0)
+        {
+            <aside class="hidden lg:block">
+                <h2 class="font-bold mb-4">เกมที่คล้ายกัน</h2>
+                <div class="flex flex-col gap-4">
+                    @foreach (var g in _similar)
+                    {
+                        <a href="/games/@g.Slug" class="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-sm hover:shadow-md transition-shadow group">
+                            <div class="w-16 h-16 flex-shrink-0 bg-indigo-50 rounded-xl overflow-hidden">
+                                @if (!string.IsNullOrEmpty(g.ThumbnailUrl))
+                                {
+                                    <img src="@g.ThumbnailUrl" alt="@g.Title" class="w-full h-full object-cover" />
+                                }
+                                else
+                                {
+                                    <div class="w-full h-full flex items-center justify-center text-2xl">🎮</div>
+                                }
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm truncate group-hover:text-indigo-600">@g.Title</p>
+                                <p class="text-xs text-slate-400 truncate">@g.Company</p>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </aside>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private Game? _game;
+    private List<Game> _similar = [];
+    private bool _loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _game = await GameSvc.GetGameBySlugAsync(Slug);
+        if (_game is not null)
+            _similar = await GameSvc.GetSimilarGamesAsync(_game.Categories, Slug);
+        _loading = false;
+    }
+}

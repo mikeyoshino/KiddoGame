@@ -1,0 +1,166 @@
+@page "/"
+@rendermode InteractiveServer
+@inject GameService GameSvc
+
+<!-- Search Bar -->
+<div class="relative group mb-6">
+    <input type="text"
+           placeholder="ค้นหาเกมที่อยากเล่น..."
+           class="w-full bg-white border-none rounded-2xl py-4 px-12 shadow-sm focus:ring-2 focus:ring-indigo-300 outline-none"
+           @oninput="OnSearchInput" />
+    <svg xmlns="http://www.w3.org/2000/svg"
+         class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+</div>
+
+<!-- Category Pills -->
+<section class="mb-8">
+    <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+        <button class="category-pill @(_category == null ? "active" : "") whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-2xl bg-white shadow-sm border border-slate-100"
+                @onclick='() => SelectCategory(null)'>
+            <span class="text-sm font-medium">🌟 ทั้งหมด</span>
+        </button>
+        @foreach (var cat in _categories)
+        {
+            var c = cat;
+            <button class="category-pill @(_category == c ? "active" : "") whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-2xl bg-white shadow-sm border border-slate-100 hover:border-indigo-200"
+                    @onclick="() => SelectCategory(c)">
+                <span class="text-sm font-medium">@c</span>
+            </button>
+        }
+    </div>
+</section>
+
+<!-- Game Grid -->
+<section>
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold">
+            @(_category is null ? "เกมทั้งหมด" : _category)
+        </h2>
+        <span class="text-indigo-500 text-sm font-medium">@_total รายการ</span>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="flex justify-center py-20">
+            <div class="text-slate-400 text-center">
+                <div class="text-5xl mb-4 animate-bounce">🎮</div>
+                <p>กำลังโหลด...</p>
+            </div>
+        </div>
+    }
+    else if (_games.Count == 0)
+    {
+        <div class="py-12 text-center text-slate-400">
+            <div class="text-5xl mb-4">🔍</div>
+            <p>ไม่พบเกมที่คุณค้นหา ลองเปลี่ยนคำดูนะ</p>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6 mb-8">
+            @foreach (var game in _games)
+            {
+                <a href="/games/@game.Slug" class="game-card group cursor-pointer block">
+                    <div class="bg-indigo-50 rounded-[2.5rem] p-4 aspect-square flex items-center justify-center relative mb-3 transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-indigo-100 border border-transparent group-hover:border-white overflow-hidden">
+                        @if (!string.IsNullOrEmpty(game.ThumbnailUrl))
+                        {
+                            <img src="@game.ThumbnailUrl" alt="@game.Title"
+                                 class="w-full h-full object-cover rounded-3xl" />
+                        }
+                        else
+                        {
+                            <span class="text-5xl">🎮</span>
+                        }
+                    </div>
+                    <h3 class="font-semibold text-center text-sm md:text-base group-hover:text-indigo-600 truncate">
+                        @game.Title
+                    </h3>
+                    <p class="text-[11px] text-slate-400 text-center mt-0.5 truncate">@game.Company</p>
+                </a>
+            }
+        </div>
+
+        <!-- Pagination -->
+        @if (_totalPages > 1)
+        {
+            <div class="flex justify-center items-center gap-2 py-6">
+                <button class="px-4 py-2 rounded-xl bg-white shadow-sm text-sm disabled:opacity-40"
+                        disabled="@(_page == 1)"
+                        @onclick="PrevPage">
+                    ← ก่อนหน้า
+                </button>
+                <span class="text-sm text-slate-500">หน้า @_page / @_totalPages</span>
+                <button class="px-4 py-2 rounded-xl bg-white shadow-sm text-sm disabled:opacity-40"
+                        disabled="@(_page == _totalPages)"
+                        @onclick="NextPage">
+                    ถัดไป →
+                </button>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private List<Game> _games = [];
+    private List<string> _categories = [];
+    private string? _category;
+    private string? _search;
+    private int _page = 1;
+    private int _total;
+    private int _totalPages;
+    private bool _loading = true;
+    private System.Threading.Timer? _debounce;
+    private const int PageSize = 30;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await GameSvc.GetCategoriesAsync();
+        await LoadGames();
+    }
+
+    private async Task LoadGames()
+    {
+        _loading = true;
+        var (games, total) = await GameSvc.GetGamesAsync(_page, PageSize, _category, _search);
+        _games = games;
+        _total = total;
+        _totalPages = (int)Math.Ceiling(total / (double)PageSize);
+        _loading = false;
+    }
+
+    private async Task SelectCategory(string? cat)
+    {
+        _category = cat;
+        _page = 1;
+        await LoadGames();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _debounce?.Dispose();
+        _debounce = new System.Threading.Timer(async _ =>
+        {
+            _search = e.Value?.ToString();
+            _page = 1;
+            await InvokeAsync(async () =>
+            {
+                await LoadGames();
+                StateHasChanged();
+            });
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadGames(); }
+    }
+
+    private async Task NextPage()
+    {
+        if (_page < _totalPages) { _page++; await LoadGames(); }
+    }
+}

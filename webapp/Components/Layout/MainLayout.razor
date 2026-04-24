@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<div class="min-h-screen pb-20 md:pb-0">
+    <header class="sticky top-0 bg-slate-50/90 backdrop-blur-sm z-40 px-6 py-4 max-w-7xl mx-auto w-full">
+        <a href="/">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
+                KiddoGame
+            </h1>
+            <p class="text-slate-400 text-sm font-light">เล่นสนุก เรียนรู้ไว 🌈</p>
+        </a>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-4">
+        @Body
+    </main>
+</div>
+
+<MobileNav />
