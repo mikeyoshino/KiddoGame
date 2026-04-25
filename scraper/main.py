@@ -1,9 +1,19 @@
 # scraper_service/main.py
 import asyncio
 import time
+from pathlib import Path
 
-from config import CONCURRENCY, PAGE_DELAY
-from db import load_existing_object_ids, load_pending_games, insert_pending, update_done
+from config import CONCURRENCY, PAGE_DELAY, THUMBNAIL_OUTPUT_DIR
+from db import (
+    load_existing_object_ids,
+    load_pending_games,
+    load_games_needing_thumbnails,
+    load_games_with_local_thumbnails,
+    mark_null_thumbnails_pending,
+    reset_thumbnail_pending,
+    insert_pending,
+    update_done,
+)
 from gd_client import fetch_page, parse_hits, get_total_pages
 from detail_fetcher import fetch_details_batch
 from thumbnail_downloader import download_thumbnails
@@ -31,19 +41,50 @@ async def retry_pending() -> None:
     await download_thumbnails(pending)
 
 
+def mark_missing_local_thumbnails_pending() -> None:
+    games = load_games_with_local_thumbnails()
+    missing = [
+        g for g in games
+        if not (THUMBNAIL_OUTPUT_DIR / Path(g["thumbnail_url"]).name).exists()
+    ]
+    if not missing:
+        print("All local thumbnails present on disk.")
+        return
+    print(f"Marking {len(missing)} records with missing local files as pending...")
+    for game in missing:
+        remote_url = f"https://img.gamedistribution.com/{Path(game['thumbnail_url']).name}"
+        reset_thumbnail_pending(game["object_id"], remote_url)
+
+
+async def repair_missing_thumbnails() -> None:
+    games = load_games_needing_thumbnails()
+    if not games:
+        print("No missing thumbnails to repair.")
+        return
+    print(f"Repairing {len(games)} records with missing local thumbnails...")
+    await download_thumbnails(games)
+
+
 async def scrape_new_games(existing_ids: set[str]) -> None:
     print("Starting GraphQL listing scrape...")
-    page = 1
-    total_pages: int | None = None
 
-    while total_pages is None or page <= total_pages:
-        print(f"Page {page}/{total_pages or '?'}...")
-        data = fetch_page(page)
+    # Fetch page 1 just to get total_pages
+    data = fetch_page(1)
+    total_pages = get_total_pages(data)
+    print(f"Total pages: {total_pages}")
 
-        if total_pages is None:
-            total_pages = get_total_pages(data)
+    # Iterate in reverse so newest GD games (page 1) are inserted last,
+    # giving them the most recent created_at and appearing first in the app.
+    for page in range(total_pages, 0, -1):
+        print(f"Page {page}/{total_pages}...")
+        try:
+            data = fetch_page(page)
+            hits = parse_hits(data)
+        except ValueError as e:
+            print(f"  [WARN] Skipping page {page}: {e}")
+            time.sleep(PAGE_DELAY)
+            continue
 
-        hits = parse_hits(data)
         new_games = [g for g in hits if g["object_id"] not in existing_ids]
 
         if new_games:
@@ -57,13 +98,10 @@ async def scrape_new_games(existing_ids: set[str]) -> None:
             results = await fetch_details_batch(new_games, CONCURRENCY)
             await _process_detail_results(results)
 
-            # Download thumbnails for this page's batch immediately
-            # new_games already has thumbnail_url from parse_hits
             await download_thumbnails(new_games)
 
         skipped = len(hits) - len(new_games)
         print(f"  -> {len(new_games)} new, {skipped} skipped")
-        page += 1
         time.sleep(PAGE_DELAY)
 
     print("Scrape complete.")
@@ -74,7 +112,10 @@ async def main() -> None:
     existing_ids = load_existing_object_ids()
     print(f"Found {len(existing_ids)} existing records.")
 
+    mark_missing_local_thumbnails_pending()
+    mark_null_thumbnails_pending()
     await retry_pending()
+    await repair_missing_thumbnails()
     await scrape_new_games(existing_ids)
 
 
