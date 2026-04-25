@@ -21,5 +21,5 @@ public class Game
     public int ViewCount { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public string GameUrl => $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://gamedistribution.com/games/{Slug}/";
+    public string GameUrl => $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://kiddogame.net/games/{Slug}/";
 }
