@@ -61,6 +61,24 @@
                     observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
                 }
             }, 300);
+
+            // On wake from sleep the MutationObserver may have missed the disconnect —
+            // check reconnect state 2s after the tab becomes visible again.
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden || reloading) return;
+                setTimeout(function () {
+                    if (reloading) return;
+                    var modal = document.getElementById('components-reconnect-modal');
+                    if (!modal) return;
+                    var cls = modal.className;
+                    if (cls.includes('components-reconnect-show') ||
+                        cls.includes('components-reconnect-failed') ||
+                        cls.includes('components-reconnect-rejected')) {
+                        reloading = true;
+                        window.location.reload();
+                    }
+                }, 2000);
+            });
         })();
 
         // Fullscreen helper — called from GamePage
