@@ -12,16 +12,26 @@
 <h1 class="sr-only">@SeoMeta.HomeH1</h1>
 
 <!-- Intro for SEO -->
-<p class="text-slate-500 text-sm text-center mb-4 leading-relaxed">
+<div class="text-center mb-4 space-y-1">
     @if (LangSvc.Current == Lang.Thai)
     {
-        @("รวมเกมออนไลน์สำหรับเด็กฟรีกว่า 9,000 เกม เล่นได้เลยบนเบราว์เซอร์ ไม่ต้องดาวน์โหลด ครอบคลุมทุกประเภท ทั้งเกมการศึกษา เกมปริศนา เกมแข่งรถ เกมแต่งตัว เกมทำอาหาร และอื่นๆ อีกมากมาย ปลอดภัยสำหรับเด็กทุกวัย")
+        <p class="text-slate-500 text-sm leading-relaxed">
+            รวม <strong>เกมออนไลน์สำหรับเด็กฟรี</strong> กว่า 9,000 เกม เล่นได้เลยไม่ต้องดาวน์โหลด เปิดบนเบราว์เซอร์ได้ทันที
+        </p>
+        <p class="text-slate-400 text-xs leading-relaxed">
+            ครอบคลุมทุกประเภท ทั้งเกมการศึกษา เกมปริศนา เกมแข่งรถ เกมแต่งตัว เกมทำอาหาร เกมผจญภัย และอื่นๆ อีกมากมาย ปลอดภัยสำหรับเด็กทุกวัย
+        </p>
     }
     else
     {
-        @("Over 9,000 free online games for kids — play instantly in your browser, no download needed. Explore educational games, puzzles, racing, dress-up, cooking, and more. Safe for kids of all ages.")
+        <p class="text-slate-500 text-sm leading-relaxed">
+            Over 9,000 <strong>free online games for kids</strong> — play instantly in your browser, no download needed.
+        </p>
+        <p class="text-slate-400 text-xs leading-relaxed">
+            Browse educational games, puzzles, racing, dress-up, cooking, adventure games and more. Safe and fun for kids of all ages.
+        </p>
     }
-</p>
+</div>
 
 <!-- Search Bar -->
 <div class="relative group mb-6">
