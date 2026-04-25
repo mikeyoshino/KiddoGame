@@ -1,0 +1,115 @@
+@page "/about"
+@rendermode InteractiveServer
+@inject LanguageService LangSvc
+@implements IDisposable
+
+<SeoHead Title="เกี่ยวกับ KiddoGame - เกมออนไลน์สำหรับเด็กฟรี ปลอดภัย ไม่ต้องดาวน์โหลด"
+         Description="KiddoGame รวมเกมออนไลน์ฟรีสำหรับเด็กกว่า 2,000 เกม ปลอดภัย ไม่ต้องดาวน์โหลด เล่นได้ทันทีบนเบราว์เซอร์ เหมาะสำหรับเด็กทุกวัย"
+         Canonical="https://kiddogame.net/about"
+         JsonLd="@_jsonLd" />
+
+<div class="max-w-2xl mx-auto">
+
+    <h1 class="text-3xl font-bold mb-6">
+        @(IsThai ? "เกี่ยวกับ KiddoGame" : "About KiddoGame")
+    </h1>
+
+    @if (IsThai)
+    {
+        <p class="text-slate-600 leading-relaxed mb-4">
+            KiddoGame คือแหล่งรวมเกมออนไลน์สำหรับเด็กฟรีที่ใหญ่ที่สุด เราเชื่อว่าเด็กทุกคนควรมีสิทธิ์เข้าถึงเกมที่สนุก ปลอดภัย และเสริมพัฒนาการ โดยไม่มีค่าใช้จ่ายใดๆ
+        </p>
+        <p class="text-slate-600 leading-relaxed mb-8">
+            เราก่อตั้ง KiddoGame ขึ้นเพราะเชื่อว่าการเล่นเกมที่ดีช่วยพัฒนาความคิดสร้างสรรค์ ทักษะการแก้ปัญหา และความสนุกสนานของเด็กๆ ทุกเกมบน KiddoGame ผ่านการคัดสรรให้เหมาะสมกับเด็กทุกวัย
+        </p>
+    }
+    else
+    {
+        <p class="text-slate-600 leading-relaxed mb-4">
+            KiddoGame is your go-to destination for free online kids games. We believe every child deserves access to fun, safe, and enriching games — completely free.
+        </p>
+        <p class="text-slate-600 leading-relaxed mb-8">
+            We built KiddoGame because great games help kids develop creativity, problem-solving, and joy. Every game on KiddoGame is carefully chosen to be age-appropriate and safe.
+        </p>
+    }
+
+    <div class="grid grid-cols-2 gap-4 mb-10">
+        @foreach (var card in _cards)
+        {
+            <div class="bg-indigo-50 rounded-2xl p-6 flex flex-col gap-2">
+                <span class="text-4xl">@card.Icon</span>
+                <p class="font-bold text-indigo-700">@(IsThai ? card.HeadingTh : card.HeadingEn)</p>
+                <p class="text-sm text-slate-500">@(IsThai ? card.SubTh : card.SubEn)</p>
+            </div>
+        }
+    </div>
+
+    <h2 class="text-xl font-bold mt-10 mb-3">
+        @(IsThai ? "เกมครอบคลุมทุกประเภท" : "Games for Every Interest")
+    </h2>
+
+    @if (IsThai)
+    {
+        <p class="text-slate-600 leading-relaxed mb-8">
+            เรามีเกมครอบคลุมทุกประเภท ไม่ว่าจะเป็นเกมปริศนาฝึกสมอง เกมแข่งรถมันส์ๆ เกมการศึกษาสอนภาษาอังกฤษ เกมแต่งตัว เกมทำอาหาร เกมแคชวล เกมไอโอ และอีกมากมาย รับรองว่ามีเกมที่ถูกใจเด็กทุกคนอย่างแน่นอน
+        </p>
+    }
+    else
+    {
+        <p class="text-slate-600 leading-relaxed mb-8">
+            From brain-teasing puzzles and racing games to educational titles, dress-up, cooking, casual, and IO games — there's something for every kid on KiddoGame.
+        </p>
+    }
+
+    <h2 class="text-xl font-bold mt-10 mb-3">
+        @(IsThai ? "วิธีเริ่มเล่น" : "How to Start Playing")
+    </h2>
+
+    @if (IsThai)
+    {
+        <ol class="list-decimal list-inside space-y-2 text-slate-600 mb-10">
+            <li>เลือกเกมที่ชอบจากหน้าแรก</li>
+            <li>กดที่เกมเพื่อเข้าสู่หน้าเกม</li>
+            <li>กดเล่นได้เลย ไม่ต้องสมัครสมาชิก ไม่ต้องดาวน์โหลด</li>
+        </ol>
+    }
+    else
+    {
+        <ol class="list-decimal list-inside space-y-2 text-slate-600 mb-10">
+            <li>Browse and pick a game from the home page</li>
+            <li>Click the game to open its page</li>
+            <li>Hit play — no sign-up, no download needed</li>
+        </ol>
+    }
+
+</div>
+
+@code {
+    private bool IsThai => LangSvc.Current == Lang.Thai;
+
+    private const string _jsonLd = @"{
+  ""@context"": ""https://schema.org"",
+  ""@type"": ""Organization"",
+  ""name"": ""KiddoGame"",
+  ""url"": ""https://kiddogame.net"",
+  ""description"": ""รวมเกมออนไลน์ฟรีสำหรับเด็กกว่า 2,000 เกม ปลอดภัย ไม่ต้องดาวน์โหลด""
+}";
+
+    private record Card(string Icon, string HeadingTh, string SubTh, string HeadingEn, string SubEn);
+
+    private static readonly Card[] _cards =
+    [
+        new("🎮", "2,000+ เกม",         "รวมเกมหลากหลายทุกประเภท",  "2,000+ Games",  "Every genre covered"),
+        new("🆓", "ฟรีทั้งหมด",         "ไม่มีค่าใช้จ่ายใดๆ",        "100% Free",     "No cost, ever"),
+        new("🛡️", "ปลอดภัยสำหรับเด็ก", "คัดสรรเนื้อหาเหมาะสม",      "Safe for Kids", "Carefully curated content"),
+        new("📱", "ไม่ต้องดาวน์โหลด",   "เล่นได้เลยบนเบราว์เซอร์",  "No Download",   "Play right in your browser"),
+    ];
+
+    protected override void OnInitialized() =>
+        LangSvc.OnChanged += OnLanguageChanged;
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() =>
+        LangSvc.OnChanged -= OnLanguageChanged;
+}

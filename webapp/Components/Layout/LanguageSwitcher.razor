@@ -1,0 +1,58 @@
+@rendermode InteractiveServer
+@inject LanguageService LangSvc
+@inject IJSRuntime JS
+
+<div class="relative">
+    <button @onclick="ToggleDropdown"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white shadow-sm border border-slate-100 hover:border-indigo-200 transition-colors">
+        @if (LangSvc.Current == Lang.Thai)
+        {
+            <CountryFlag Country="Country.TH" Size="FlagSize.Small" />
+        }
+        else
+        {
+            <CountryFlag Country="Country.GB" Size="FlagSize.Small" />
+        }
+        <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+    </button>
+
+    @if (_dropdownOpen)
+    {
+        <div class="fixed inset-0 z-40" @onclick="CloseDropdown"></div>
+        <div class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden z-50">
+            <button @onclick='() => SelectLanguage(Lang.Thai)'
+                    class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-slate-50 @(LangSvc.Current == Lang.Thai ? "bg-indigo-50 text-indigo-600 font-medium" : "")">
+                <CountryFlag Country="Country.TH" Size="FlagSize.Small" />
+                ภาษาไทย
+            </button>
+            <button @onclick='() => SelectLanguage(Lang.English)'
+                    class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-slate-50 @(LangSvc.Current == Lang.English ? "bg-indigo-50 text-indigo-600 font-medium" : "")">
+                <CountryFlag Country="Country.GB" Size="FlagSize.Small" />
+                English
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _dropdownOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var code = await JS.InvokeAsync<string>("getLang");
+        LangSvc.SetLanguage(code == "th" ? Lang.Thai : Lang.English);
+    }
+
+    private void ToggleDropdown() => _dropdownOpen = !_dropdownOpen;
+    private void CloseDropdown() => _dropdownOpen = false;
+
+    private async Task SelectLanguage(Lang lang)
+    {
+        _dropdownOpen = false;
+        LangSvc.SetLanguage(lang);
+        await JS.InvokeVoidAsync("setLang", lang == Lang.Thai ? "th" : "en");
+    }
+}

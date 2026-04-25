@@ -1,0 +1,49 @@
+@rendermode InteractiveServer
+@inject LanguageService LangSvc
+@inject NavigationManager Nav
+@implements IDisposable
+
+<nav class="flex items-center gap-1">
+    <a href="/"
+       class="px-4 py-2 rounded-xl text-sm font-medium transition-colors
+              @(IsHome ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700")">
+        @Strings.Get(LangSvc.Current, "nav_home")
+    </a>
+    <a href="/favorites"
+       class="px-4 py-2 rounded-xl text-sm font-medium transition-colors
+              @(IsFavorites ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700")">
+        @Strings.Get(LangSvc.Current, "favorites")
+    </a>
+    <a href="/about"
+       class="px-4 py-2 rounded-xl text-sm font-medium transition-colors
+              @(IsAbout ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700")">
+        @Strings.Get(LangSvc.Current, "nav_about")
+    </a>
+</nav>
+
+@code {
+    private bool IsHome =>
+        Nav.Uri == Nav.BaseUri || Nav.Uri.TrimEnd('/') == Nav.BaseUri.TrimEnd('/');
+
+    private bool IsFavorites =>
+        Nav.Uri.TrimEnd('/').Equals(Nav.BaseUri.TrimEnd('/') + "favorites", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsAbout =>
+        Nav.Uri.TrimEnd('/').Equals(Nav.BaseUri.TrimEnd('/') + "about", StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        LangSvc.OnChanged += OnLanguageChanged;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+    private void OnLocationChanged(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        LangSvc.OnChanged -= OnLanguageChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -10,6 +10,8 @@ public class Game
     public string? ThumbnailUrl { get; set; }
     public string? Description { get; set; }
     public string? Instruction { get; set; }
+    public string? DescriptionTh { get; set; }
+    public string? InstructionTh { get; set; }
     public string[] Categories { get; set; } = [];
     public string[] Tags { get; set; } = [];
     public string[] Languages { get; set; } = [];
@@ -19,5 +21,5 @@ public class Game
     public int ViewCount { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public string GameUrl => $"https://html5.gamedistribution.com/{ObjectId}/";
+    public string GameUrl => $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://gamedistribution.com/games/{Slug}/";
 }

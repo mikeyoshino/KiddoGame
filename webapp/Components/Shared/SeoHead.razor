@@ -1,0 +1,42 @@
+<PageTitle>@Title</PageTitle>
+<HeadContent>
+    <meta name="description" content="@Description" />
+    <link rel="canonical" href="@Canonical" />
+
+    <meta property="og:type"        content="@OgType" />
+    <meta property="og:title"       content="@Title" />
+    <meta property="og:description" content="@Description" />
+    <meta property="og:url"         content="@Canonical" />
+    <meta property="og:site_name"   content="KiddoGame" />
+    <meta property="og:locale"      content="th_TH" />
+    @if (!string.IsNullOrEmpty(OgImage))
+    {
+        <meta property="og:image" content="@OgImage" />
+    }
+
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="@Title" />
+    <meta name="twitter:description" content="@Description" />
+    @if (!string.IsNullOrEmpty(OgImage))
+    {
+        <meta name="twitter:image" content="@OgImage" />
+    }
+
+    <link rel="alternate" hreflang="th"        href="@Canonical" />
+    <link rel="alternate" hreflang="en"        href="@Canonical" />
+    <link rel="alternate" hreflang="x-default" href="@Canonical" />
+
+    @if (!string.IsNullOrEmpty(JsonLd))
+    {
+        <script type="application/ld+json">@((MarkupString)JsonLd)</script>
+    }
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired] public string  Title       { get; set; } = "";
+    [Parameter, EditorRequired] public string  Description { get; set; } = "";
+    [Parameter, EditorRequired] public string  Canonical   { get; set; } = "";
+    [Parameter] public string  OgType  { get; set; } = "website";
+    [Parameter] public string? OgImage { get; set; }
+    [Parameter] public string? JsonLd  { get; set; }
+}

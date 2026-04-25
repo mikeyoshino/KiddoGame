@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Kiddo.Web.Models;
 using Kiddo.Web.Services;
 
 namespace Kiddo.Web.Tests;
@@ -96,15 +97,101 @@ public class GameServiceTests
     }
 
     [Fact]
-    public async Task GetCategoriesAsync_ReturnsCategories()
+    public void BuildGamesUrl_NoFilter_BuildsBasicUrl()
     {
-        var json = """[{"category":"Casual"},{"category":"Agility"}]""";
+        var url = GameService.BuildGamesUrl(1, 30, null, null);
+        Assert.Equal("games?select=*&order=created_at.desc&offset=0&limit=30", url);
+    }
+
+    [Fact]
+    public void BuildGamesUrl_PageTwo_CorrectOffset()
+    {
+        var url = GameService.BuildGamesUrl(2, 30, null, null);
+        Assert.Contains("offset=30", url);
+    }
+
+    [Fact]
+    public void BuildGamesUrl_SingleCategory_UsesOvOperator()
+    {
+        var url = GameService.BuildGamesUrl(1, 30, new HashSet<string> { "Casual" }, null);
+        Assert.Contains("&categories=ov.%7BCasual%7D", url);
+    }
+
+    [Fact]
+    public void BuildGamesUrl_MultipleCategories_IncludesBothNames()
+    {
+        var url = GameService.BuildGamesUrl(1, 30, new HashSet<string> { "Casual", "Puzzle" }, null);
+        Assert.Contains("&categories=ov.%7B", url);
+        Assert.Contains("Casual", url);
+        Assert.Contains("Puzzle", url);
+    }
+
+    [Fact]
+    public void BuildGamesUrl_EmptyCategories_NoCategoryFilter()
+    {
+        var url = GameService.BuildGamesUrl(1, 30, new HashSet<string>(), null);
+        Assert.DoesNotContain("categories", url);
+    }
+
+    [Fact]
+    public void BuildGamesUrl_WithSearch_SearchesTitleAndDescriptionEn()
+    {
+        var url = GameService.BuildGamesUrl(1, 30, null, "mario", Lang.English);
+        Assert.Contains("title.ilike.*mario*", url);
+        Assert.Contains("description.ilike.*mario*", url);
+        Assert.DoesNotContain("description_th", url);
+    }
+
+    [Fact]
+    public void BuildGamesUrl_WithSearch_ThaiSearchesDescriptionTh()
+    {
+        var url = GameService.BuildGamesUrl(1, 30, null, "mario", Lang.Thai);
+        Assert.Contains("title.ilike.*mario*", url);
+        Assert.Contains("description_th.ilike.*mario*", url);
+        Assert.DoesNotContain("description.ilike.*mario*", url);
+    }
+
+    [Fact]
+    public async Task GetCategoriesAsync_ReturnsGenresWithCounts()
+    {
+        var json = """[{"category":"Casual","count":5071},{"category":"Puzzle","count":3660}]""";
         var client = MakeClient(json);
         var service = new GameService(client);
 
-        var categories = await service.GetCategoriesAsync();
+        var genres = await service.GetCategoriesAsync();
 
-        Assert.Equal(new[] { "Casual", "Agility" }, categories);
+        Assert.Equal(2, genres.Count);
+        Assert.Equal(("Casual", 5071), genres[0]);
+        Assert.Equal(("Puzzle", 3660), genres[1]);
+    }
+
+    [Fact]
+    public async Task GetGamesBySlugsAsync_ReturnsEmptyForNoSlugs()
+    {
+        var client = MakeClient("[]");
+        var service = new GameService(client);
+
+        var result = await service.GetGamesBySlugsAsync([]);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetGamesBySlugsAsync_ReturnsMatchingGames()
+    {
+        var json = """
+            [{"id":"1","object_id":"abc","slug":"game-1","title":"Game One",
+              "company":null,"thumbnail_url":null,"description":null,"instruction":null,
+              "categories":[],"tags":[],"languages":[],"gender":[],"age_group":[],
+              "status":"done","view_count":0,"created_at":"2026-04-24T00:00:00Z"}]
+            """;
+        var client = MakeClient(json);
+        var service = new GameService(client);
+
+        var result = await service.GetGamesBySlugsAsync(["game-1"]);
+
+        Assert.Single(result);
+        Assert.Equal("game-1", result[0].Slug);
     }
 }
 

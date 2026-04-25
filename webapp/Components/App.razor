@@ -3,7 +3,6 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>KiddoGame</title>
     <base href="/" />
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,11 +12,70 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .game-card:active { transform: scale(0.95); }
         .category-pill.active { background-color: #4F46E5; color: white; }
+        /* Hide ALL Blazor reconnect states — show, failed, rejected */
+        #components-reconnect-modal,
+        #components-reconnect-modal.components-reconnect-show,
+        #components-reconnect-modal.components-reconnect-failed,
+        #components-reconnect-modal.components-reconnect-rejected {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
     </style>
+
+    <link href="_content/Blazor.Flags/flags.css" rel="stylesheet" />
     <HeadOutlet />
 </head>
 <body class="bg-slate-50 text-slate-800">
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        // Must run AFTER blazor.web.js so the modal element exists
+        (function () {
+            var reloading = false;
+            var observer = new MutationObserver(function (_, obs) {
+                if (reloading) return;
+                var modal = document.getElementById('components-reconnect-modal');
+                if (!modal) return;
+                var cls = modal.className;
+                if (cls.includes('components-reconnect-show') ||
+                    cls.includes('components-reconnect-failed') ||
+                    cls.includes('components-reconnect-rejected')) {
+                    reloading = true;
+                    obs.disconnect();
+                    // 2s delay gives server time to restart before we reload
+                    setTimeout(function () { window.location.reload(); }, 2000);
+                }
+            });
+            // Poll every 300ms until Blazor creates the modal, then attach observer
+            var poll = setInterval(function () {
+                var modal = document.getElementById('components-reconnect-modal');
+                if (modal) {
+                    clearInterval(poll);
+                    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+                }
+            }, 300);
+        })();
+
+        // Fullscreen helper — called from GamePage
+        function enterFullscreen() {
+            var iframe = document.getElementById('game-iframe');
+            if (!iframe) return;
+            var req = iframe.requestFullscreen || iframe.webkitRequestFullscreen ||
+                      iframe.mozRequestFullScreen || iframe.msRequestFullscreen;
+            if (req) req.call(iframe);
+        }
+    </script>
+    <script>
+        window.getLang = function () {
+            var stored = localStorage.getItem("lang");
+            if (stored) return stored;
+            return navigator.language.startsWith("th") ? "th" : "en";
+        };
+        window.setLang = function (lang) {
+            localStorage.setItem("lang", lang);
+        };
+    </script>
 </body>
 </html>

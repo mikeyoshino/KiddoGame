@@ -18,17 +18,32 @@ public class GameService(HttpClient http)
         return parts.Length == 2 && int.TryParse(parts[1], out var total) ? total : 0;
     }
 
-    public async Task<(List<Game> Games, int Total)> GetGamesAsync(
-        int page, int pageSize = 30, string? category = null, string? search = null)
+    internal static string BuildGamesUrl(
+        int page, int pageSize, IReadOnlySet<string>? categories, string? search, Lang lang = Lang.English)
     {
         var offset = (page - 1) * pageSize;
-        var url = $"games?select=*&status=eq.done&order=created_at.desc&offset={offset}&limit={pageSize}";
+        var url = $"games?select=*&order=created_at.desc&offset={offset}&limit={pageSize}";
 
-        if (!string.IsNullOrEmpty(category))
-            url += $"&categories=cs.%7B{Uri.EscapeDataString(category)}%7D";
+        if (categories is { Count: > 0 })
+        {
+            var cats = string.Join(",", categories);
+            url += $"&categories=ov.%7B{Uri.EscapeDataString(cats)}%7D";
+        }
 
         if (!string.IsNullOrEmpty(search))
-            url += $"&title=ilike.*{Uri.EscapeDataString(search)}*";
+        {
+            var term = Uri.EscapeDataString(search);
+            var descCol = lang == Lang.Thai ? "description_th" : "description";
+            url += $"&or=(title.ilike.*{term}*,{descCol}.ilike.*{term}*)";
+        }
+
+        return url;
+    }
+
+    public async Task<(List<Game> Games, int Total)> GetGamesAsync(
+        int page, int pageSize = 30, IReadOnlySet<string>? categories = null, string? search = null, Lang lang = Lang.English)
+    {
+        var url = BuildGamesUrl(page, pageSize, categories, search, lang);
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.TryAddWithoutValidation("Prefer", "count=exact");
@@ -47,7 +62,7 @@ public class GameService(HttpClient http)
 
     public async Task<Game?> GetGameBySlugAsync(string slug)
     {
-        var url = $"games?select=*&slug=eq.{Uri.EscapeDataString(slug)}&status=eq.done&limit=1";
+        var url = $"games?select=*&slug=eq.{Uri.EscapeDataString(slug)}&limit=1";
         var json = await http.GetStringAsync(url);
         var games = JsonSerializer.Deserialize<List<Game>>(json, _json) ?? [];
         return games.FirstOrDefault();
@@ -58,18 +73,27 @@ public class GameService(HttpClient http)
     {
         if (categories.Length == 0) return [];
         var cats = string.Join(",", categories);
-        var url = $"games?select=*&status=eq.done&categories=ov.%7B{Uri.EscapeDataString(cats)}%7D&slug=neq.{Uri.EscapeDataString(excludeSlug)}&limit={limit}";
+        var url = $"games?select=*&categories=ov.%7B{Uri.EscapeDataString(cats)}%7D&slug=neq.{Uri.EscapeDataString(excludeSlug)}&limit={limit}";
         var json = await http.GetStringAsync(url);
         return JsonSerializer.Deserialize<List<Game>>(json, _json) ?? [];
     }
 
-    public async Task<List<string>> GetCategoriesAsync()
+    public async Task<List<Game>> GetGamesBySlugsAsync(string[] slugs)
+    {
+        if (slugs.Length == 0) return [];
+        var inList = string.Join(",", slugs.Select(Uri.EscapeDataString));
+        var url = $"games?select=*&slug=in.({inList})";
+        var json = await http.GetStringAsync(url);
+        return JsonSerializer.Deserialize<List<Game>>(json, _json) ?? [];
+    }
+
+    public async Task<List<(string Category, int Count)>> GetCategoriesAsync()
     {
         try
         {
             var json = await http.GetStringAsync("rpc/get_distinct_categories");
             var rows = JsonSerializer.Deserialize<List<CategoryRow>>(json, _json) ?? [];
-            return rows.Select(r => r.Category).ToList();
+            return rows.Select(r => (r.Category, r.Count)).ToList();
         }
         catch (HttpRequestException)
         {
@@ -77,5 +101,13 @@ public class GameService(HttpClient http)
         }
     }
 
-    private record CategoryRow(string Category);
+    public async Task<List<string>> GetAllSlugsAsync()
+    {
+        var json = await http.GetStringAsync("games?select=slug&status=eq.done&limit=10000");
+        var rows = JsonSerializer.Deserialize<List<SlugRow>>(json, _json) ?? [];
+        return rows.Select(r => r.Slug).ToList();
+    }
+
+    private record CategoryRow(string Category, int Count);
+    private record SlugRow(string Slug);
 }

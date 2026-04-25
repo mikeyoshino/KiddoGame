@@ -2,46 +2,116 @@
 @rendermode InteractiveServer
 @inject GameService GameSvc
 @inject NavigationManager Nav
+@inject LanguageService LangSvc
+@inject FavoritesService FavSvc
+@implements IDisposable
 
 @if (_loading)
 {
+    <SeoHead Title="KiddoGame - เกมเด็กออนไลน์ฟรี"
+             Description="@SeoMeta.HomeDescription"
+             Canonical="@(SeoMeta.BaseUrl + "/games/" + Slug)" />
     <div class="flex justify-center items-center min-h-[60vh]">
         <div class="text-slate-400 text-center">
             <div class="text-6xl mb-4 animate-bounce">🎮</div>
-            <p class="animate-pulse">กำลังโหลด...</p>
+            <p class="animate-pulse">@Strings.Get(LangSvc.Current, "loading")</p>
         </div>
     </div>
 }
 else if (_game is null)
 {
+    <SeoHead Title="ไม่พบเกม | KiddoGame"
+             Description="@SeoMeta.HomeDescription"
+             Canonical="@(SeoMeta.BaseUrl + "/games/" + Slug)" />
     <div class="flex justify-center items-center min-h-[60vh]">
         <div class="text-center text-slate-400">
             <div class="text-5xl mb-4">😕</div>
-            <p>ไม่พบเกมนี้</p>
-            <a href="/" class="mt-4 inline-block text-indigo-500">← กลับหน้าแรก</a>
+            <p>@Strings.Get(LangSvc.Current, "game_not_found")</p>
+            <a href="/" class="mt-4 inline-block text-indigo-500">@Strings.Get(LangSvc.Current, "back_home")</a>
         </div>
     </div>
 }
 else
 {
+    <SeoHead Title="@SeoMeta.GameTitle(_game)"
+             Description="@SeoMeta.GameDescription(_game)"
+             Canonical="@(SeoMeta.BaseUrl + "/games/" + _game.Slug)"
+             OgType="article"
+             OgImage="@(_game.ThumbnailUrl ?? SeoMeta.DefaultOgImage)"
+             JsonLd="@SeoMeta.GameJsonLd(_game, SeoMeta.BaseUrl + "/games/" + _game.Slug)" />
+
+    var description = LangSvc.Current == Lang.Thai && !string.IsNullOrEmpty(_game.DescriptionTh)
+        ? _game.DescriptionTh : _game.Description;
+    var instruction = LangSvc.Current == Lang.Thai && !string.IsNullOrEmpty(_game.InstructionTh)
+        ? _game.InstructionTh : _game.Instruction;
+
     <div class="lg:grid lg:grid-cols-[1fr_280px] lg:gap-6">
         <!-- Left: iframe + info -->
         <div>
             <!-- Game iframe -->
-            <div class="w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden mb-6 shadow-xl">
-                <iframe src="@_game.GameUrl"
+            <div class="@(_expanded ? "fixed inset-0 z-50 rounded-none" : "w-full aspect-video rounded-2xl mb-6 relative")
+                        bg-slate-900 overflow-hidden shadow-xl group" id="game-wrapper">
+                <iframe id="game-iframe"
+                        src="@_game.GameUrl"
                         class="w-full h-full"
                         allowfullscreen
                         allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated; web-share">
                 </iframe>
+                <!-- Expand / collapse button -->
+                <button @onclick="() => _expanded = !_expanded"
+                        class="absolute bottom-3 right-3 z-10
+                               bg-black/50 hover:bg-black/80
+                               text-white rounded-lg p-2
+                               @(_expanded ? "opacity-100" : "opacity-0 group-hover:opacity-100")
+                               transition-opacity duration-200
+                               backdrop-blur-sm"
+                        title="@(_expanded ? "ย่อหน้าจอ" : "เต็มจอ")">
+                    @if (_expanded)
+                    {
+                        <!-- Collapse icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4m0 5H4m5 0L3 3m12 6h5m-5 0V4m0 5l6-6M9 15v5m0-5H4m5 5l-6 6m12-6h5m-5 0v5m0-5l6 6" />
+                        </svg>
+                    }
+                    else
+                    {
+                        <!-- Expand icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                    }
+                </button>
             </div>
+            @if (_expanded)
+            {
+                <div class="mb-6"></div>
+            }
 
             <!-- Game Info -->
             <div class="bg-white rounded-2xl p-6 shadow-sm mb-6">
-                <h1 class="text-2xl font-bold mb-1">@_game.Title</h1>
+                <div class="flex items-center gap-3 mb-1">
+                    <h1 class="text-2xl font-bold">@_game.Title</h1>
+                    <button class="bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm p-1.5 flex-shrink-0
+                                   @(FavSvc.IsFavorite(_game.Slug) ? "text-rose-500" : "text-slate-300")"
+                            @onclick="() => _ = FavSvc.ToggleAsync(_game.Slug)"
+                            title="@(FavSvc.IsFavorite(_game.Slug) ? "Remove favourite" : "Add to favourites")">
+                        @if (FavSvc.IsFavorite(_game.Slug))
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full">
+                                <path d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.218l-.022.012-.007.003-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                            </svg>
+                        }
+                    </button>
+                </div>
                 @if (!string.IsNullOrEmpty(_game.Company))
                 {
-                    <p class="text-slate-400 text-sm mb-4">โดย @_game.Company</p>
+                    <p class="text-slate-400 text-sm mb-4">@Strings.Get(LangSvc.Current, "by_company", _game.Company)</p>
                 }
 
                 @if (_game.Categories.Length > 0)
@@ -49,21 +119,21 @@ else
                     <div class="flex flex-wrap gap-2 mb-4">
                         @foreach (var cat in _game.Categories)
                         {
-                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium">@cat</span>
+                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium">@GenreTranslations.Translate(cat, LangSvc.Current)</span>
                         }
                     </div>
                 }
 
-                @if (!string.IsNullOrEmpty(_game.Description))
+                @if (!string.IsNullOrEmpty(description))
                 {
-                    <p class="text-slate-600 text-sm leading-relaxed mb-4">@_game.Description</p>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">@description</p>
                 }
 
-                @if (!string.IsNullOrEmpty(_game.Instruction))
+                @if (!string.IsNullOrEmpty(instruction))
                 {
                     <div class="bg-slate-50 rounded-xl p-4">
-                        <h3 class="font-semibold text-sm mb-2">วิธีเล่น</h3>
-                        <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">@_game.Instruction</p>
+                        <h3 class="font-semibold text-sm mb-2">@Strings.Get(LangSvc.Current, "how_to_play")</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">@instruction</p>
                     </div>
                 }
 
@@ -82,12 +152,12 @@ else
             @if (_similar.Count > 0)
             {
                 <div class="lg:hidden mb-6">
-                    <h2 class="font-bold mb-4">เกมที่คล้ายกัน</h2>
-                    <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+                    <h2 class="font-bold mb-4">@Strings.Get(LangSvc.Current, "similar_games")</h2>
+                    <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
                         @foreach (var g in _similar)
                         {
-                            <a href="/games/@g.Slug" class="flex-shrink-0 w-32 group">
-                                <div class="bg-indigo-50 rounded-2xl aspect-square overflow-hidden mb-2">
+                            <a href="/games/@g.Slug" class="flex-shrink-0 w-24 group">
+                                <div class="bg-indigo-50 rounded-2xl aspect-square overflow-hidden transition-transform duration-200 group-hover:scale-105">
                                     @if (!string.IsNullOrEmpty(g.ThumbnailUrl))
                                     {
                                         <img src="@g.ThumbnailUrl" alt="@g.Title" class="w-full h-full object-cover" />
@@ -97,7 +167,6 @@ else
                                         <div class="w-full h-full flex items-center justify-center text-3xl">🎮</div>
                                     }
                                 </div>
-                                <p class="text-xs font-medium text-center truncate group-hover:text-indigo-600">@g.Title</p>
                             </a>
                         }
                     </div>
@@ -109,12 +178,12 @@ else
         @if (_similar.Count > 0)
         {
             <aside class="hidden lg:block">
-                <h2 class="font-bold mb-4">เกมที่คล้ายกัน</h2>
-                <div class="flex flex-col gap-4">
+                <h2 class="font-bold mb-4">@Strings.Get(LangSvc.Current, "similar_games")</h2>
+                <div class="flex flex-col gap-2">
                     @foreach (var g in _similar)
                     {
-                        <a href="/games/@g.Slug" class="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-sm hover:shadow-md transition-shadow group">
-                            <div class="w-16 h-16 flex-shrink-0 bg-indigo-50 rounded-xl overflow-hidden">
+                        <a href="/games/@g.Slug" class="group">
+                            <div class="bg-indigo-50 rounded-xl aspect-video overflow-hidden transition-transform duration-200 group-hover:scale-[1.02]">
                                 @if (!string.IsNullOrEmpty(g.ThumbnailUrl))
                                 {
                                     <img src="@g.ThumbnailUrl" alt="@g.Title" class="w-full h-full object-cover" />
@@ -123,10 +192,6 @@ else
                                 {
                                     <div class="w-full h-full flex items-center justify-center text-2xl">🎮</div>
                                 }
-                            </div>
-                            <div class="min-w-0">
-                                <p class="font-medium text-sm truncate group-hover:text-indigo-600">@g.Title</p>
-                                <p class="text-xs text-slate-400 truncate">@g.Company</p>
                             </div>
                         </a>
                     }
@@ -142,6 +207,29 @@ else
     private Game? _game;
     private List<Game> _similar = [];
     private bool _loading = true;
+    private bool _expanded = false;
+
+    protected override void OnInitialized()
+    {
+        LangSvc.OnChanged += OnLanguageChanged;
+        FavSvc.OnChanged += OnFavoritesChanged;
+    }
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+    private void OnFavoritesChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        LangSvc.OnChanged -= OnLanguageChanged;
+        FavSvc.OnChanged -= OnFavoritesChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await FavSvc.LoadAsync();
+        StateHasChanged();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
