@@ -1,0 +1,55 @@
+name: Deploy KiddoGame
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'webapp/**'
+      - '.github/workflows/deploy-kiddogame.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /root/KiddoGame
+            git pull origin master
+
+            # Build app image
+            docker build -t kiddogame:latest -f webapp/Dockerfile webapp/
+
+            # Build nginx image
+            docker build -t kiddogame-nginx:latest -f webapp/nginx/Dockerfile webapp/nginx/
+
+            # Ensure shared network exists
+            docker network create infra_default || true
+
+            # Redeploy app (internal only)
+            docker stop kiddogame || true
+            docker rm kiddogame || true
+            docker run -d \
+              --name kiddogame \
+              --env-file /opt/kiddogame/.env \
+              --network infra_default \
+              --restart unless-stopped \
+              kiddogame:latest
+
+            # Redeploy nginx
+            docker stop kiddogame-nginx || true
+            docker rm kiddogame-nginx || true
+            docker run -d \
+              --name kiddogame-nginx \
+              --network infra_default \
+              --restart unless-stopped \
+              kiddogame-nginx:latest
+
+            # Health check
+            sleep 3
+            docker exec kiddogame-nginx curl -sf http://kiddogame:8080 > /dev/null && echo "Health check passed" || echo "Health check FAILED"
