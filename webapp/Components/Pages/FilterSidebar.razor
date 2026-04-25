@@ -3,7 +3,7 @@
 <!-- Mobile overlay: covers game area when drawer is open, tap to close -->
 @if (_drawerOpen)
 {
-    <div class="fixed inset-0 bg-black/25 z-20 lg:hidden"
+    <div class="fixed inset-0 bg-black/40 z-20 lg:hidden"
          @onclick="CloseDrawer"></div>
 }
 
@@ -19,7 +19,7 @@
 </button>
 
 <!-- Sidebar panel: fixed + slide on mobile, static on desktop -->
-<aside class="fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-30
+<aside class="fixed top-0 left-0 h-full w-4/5 max-w-xs bg-white shadow-xl z-30
               transition-transform duration-300 ease-in-out overflow-y-auto
               lg:static lg:h-auto lg:shadow-none lg:z-auto lg:w-64 lg:translate-x-0
               @(_drawerOpen ? "translate-x-0" : "-translate-x-full")">

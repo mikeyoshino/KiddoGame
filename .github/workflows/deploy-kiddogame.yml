@@ -31,6 +31,9 @@ jobs:
             # Ensure shared network exists
             docker network create infra_default || true
 
+            # Ensure images directory exists on host
+            mkdir -p /opt/kiddogame/images
+
             # Redeploy app (internal only)
             docker stop kiddogame || true
             docker rm kiddogame || true
@@ -39,6 +42,7 @@ jobs:
               --env-file /opt/kiddogame/.env \
               --network infra_default \
               --restart unless-stopped \
+              -v /opt/kiddogame/images:/app/wwwroot/images/games \
               kiddogame:latest
 
             # Redeploy nginx
