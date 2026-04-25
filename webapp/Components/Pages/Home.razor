@@ -11,6 +11,18 @@
 
 <h1 class="sr-only">@SeoMeta.HomeH1</h1>
 
+<!-- Intro for SEO -->
+<p class="text-slate-500 text-sm text-center mb-4 leading-relaxed">
+    @if (LangSvc.Current == Lang.Thai)
+    {
+        @("รวมเกมออนไลน์สำหรับเด็กฟรีกว่า 9,000 เกม เล่นได้เลยบนเบราว์เซอร์ ไม่ต้องดาวน์โหลด ครอบคลุมทุกประเภท ทั้งเกมการศึกษา เกมปริศนา เกมแข่งรถ เกมแต่งตัว เกมทำอาหาร และอื่นๆ อีกมากมาย ปลอดภัยสำหรับเด็กทุกวัย")
+    }
+    else
+    {
+        @("Over 9,000 free online games for kids — play instantly in your browser, no download needed. Explore educational games, puzzles, racing, dress-up, cooking, and more. Safe for kids of all ages.")
+    }
+</p>
+
 <!-- Search Bar -->
 <div class="relative group mb-6">
     <input type="text"

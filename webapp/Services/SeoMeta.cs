@@ -11,7 +11,7 @@ public static class SeoMeta
     public const string DefaultOgImage = "https://kiddogame.net/images/og-default.png";
 
     public const string HomeTitle =
-        "KiddoGame - เกมออนไลน์สำหรับเด็กฟรี 2,000+ เกม ไม่ต้องดาวน์โหลด";
+        "KiddoGame - เกมออนไลน์สำหรับเด็กฟรี";
 
     public const string HomeDescription =
         "รวมเกมออนไลน์สำหรับเด็กฟรีกว่า 2,000 เกม เล่นได้เลยบนเบราว์เซอร์ " +
