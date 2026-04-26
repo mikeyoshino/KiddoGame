@@ -58,7 +58,8 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
         IngestGame[] games)
     {
         var openAiKey = config["Ingest:OpenAiApiKey"];
-        if (string.IsNullOrEmpty(openAiKey)) return [];
+        games = games.Where(g => g.Provider == "GameDistribute" && g.TranslationStatus == null).ToArray();
+        if (games.Length == 0 || string.IsNullOrEmpty(openAiKey)) return [];
 
         var items = games.Select(g => new
         {

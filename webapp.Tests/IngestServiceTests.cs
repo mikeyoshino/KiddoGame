@@ -262,6 +262,27 @@ public class IngestServiceTests
         Assert.Contains("\"status\":\"done\"", body);
         Assert.Contains("/images/games/abc.jpg", body);
     }
+
+    // ── TranslateBatchAsync — GamePix skip ───────────────────────────────────
+
+    [Fact]
+    public async Task TranslateBatchAsync_SkipsGamePixPreTranslatedGames()
+    {
+        // AssertNotCalledHandler throws if HTTP is called — proves OpenAI is skipped
+        var config = BuildConfig("/tmp", "/images", openAiKey: "sk-test");
+        var factory = MakeFactory(new AssertNotCalledHandler());
+        var svc = new IngestService(factory, config);
+
+        var games = new[]
+        {
+            new IngestGame("gp_123", "cool", "Cool", null,
+                "http://x.com/img.jpg", "Fun", null, [], [], [], [], [],
+                Provider: "GamePix", TranslationStatus: "translated")
+        };
+        var result = await svc.TranslateBatchAsync(games);
+
+        Assert.Empty(result);
+    }
 }
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
@@ -288,6 +309,13 @@ internal class StatusHandler(HttpStatusCode code) : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage req, CancellationToken ct)
         => Task.FromResult(new HttpResponseMessage(code));
+}
+
+internal class AssertNotCalledHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage req, CancellationToken ct)
+        => throw new InvalidOperationException("HTTP should not have been called");
 }
 
 internal class SequenceHandler(IEnumerable<HttpResponseMessage> responses) : HttpMessageHandler
