@@ -39,6 +39,24 @@ async def test_post_batch_returns_results():
 
 
 @pytest.mark.asyncio
+async def test_check_title_duplicates_returns_existing_titles():
+    with aioresponses() as m:
+        m.post("http://testapp/api/ingest/check-title-duplicates",
+               payload=["Angry Birds", "Fruit Ninja"])
+        with patch.object(webapp_client, "WEBAPP_URL", "http://testapp"):
+            result = await webapp_client.check_title_duplicates(
+                ["Angry Birds", "New Game", "Fruit Ninja"]
+            )
+    assert result == ["Angry Birds", "Fruit Ninja"]
+
+
+@pytest.mark.asyncio
+async def test_check_title_duplicates_returns_empty_for_empty_input():
+    result = await webapp_client.check_title_duplicates([])
+    assert result == []
+
+
+@pytest.mark.asyncio
 async def test_post_batch_raises_on_server_error():
     with aioresponses() as m:
         m.post("http://testapp/api/ingest/batch", status=500)

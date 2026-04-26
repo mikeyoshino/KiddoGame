@@ -19,6 +19,23 @@ async def filter_new(object_ids: list[str]) -> list[str]:
             return await resp.json()
 
 
+_TITLE_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
+
+async def check_title_duplicates(titles: list[str]) -> list[str]:
+    """Return titles from the given list that already exist in the DB."""
+    if not titles:
+        return []
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            f"{WEBAPP_URL}/api/ingest/check-title-duplicates",
+            json=titles,
+            timeout=_TITLE_TIMEOUT,
+        ) as resp:
+            resp.raise_for_status()
+            return await resp.json()
+
+
 async def post_batch(games: list[dict]) -> list[dict]:
     """Send a batch of up to 10 games to the webapp ingest endpoint.
 
