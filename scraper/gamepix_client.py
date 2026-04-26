@@ -2,7 +2,7 @@ import requests
 
 _FEED_BASE = "https://feeds.gamepix.com/v2/json"
 _SID = "22322"
-_PAGE_SIZE = 50
+_PAGE_SIZE = 48  # API only allows: 12, 24, 48, 96
 
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0",

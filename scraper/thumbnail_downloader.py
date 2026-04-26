@@ -21,8 +21,8 @@ from urllib.parse import urlparse
 
 import aiohttp
 
-from config import CONCURRENCY, THUMBNAIL_OUTPUT_DIR, THUMBNAIL_URL_PREFIX
-from db import load_games_needing_thumbnails, update_thumbnail_url
+from config import THUMBNAIL_CONCURRENCY, THUMBNAIL_DELAY, THUMBNAIL_OUTPUT_DIR, THUMBNAIL_URL_PREFIX
+from db import load_games_needing_thumbnails, update_thumbnail_url, set_status_pending
 
 _HEADERS = {
     "User-Agent": (
@@ -30,6 +30,8 @@ _HEADERS = {
         "Gecko/20100101 Firefox/150.0"
     )
 }
+
+_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 
 def _local_filename(object_id: str, remote_url: str) -> str:
@@ -53,45 +55,60 @@ async def _download_one(
     Returns (object_id, local_url) on success, (object_id, None) on failure.
     """
     object_id: str = game["object_id"]
-    remote_url: str = game["thumbnail_url"]
-    filename = _local_filename(object_id, remote_url)
-    dest_path = output_dir / filename
-    local_url = f"{url_prefix}/{filename}"
+    remote_url: str = game["thumbnail_url"] or f"https://img.gamedistribution.com/{object_id}-512x384.jpg"
 
-    # Skip if already downloaded
-    if dest_path.exists():
-        print(f"  [SKIP] exists: {filename}")
-        return object_id, local_url
+    # Build candidate URLs: primary first, then all other common extensions
+    base_url = remote_url.rsplit(".", 1)[0]
+    current_ext = "." + remote_url.rsplit(".", 1)[-1].lower()
+    candidates = [remote_url] + [
+        f"{base_url}{ext}" for ext in _IMAGE_EXTENSIONS if ext != current_ext
+    ]
+
+    # Skip if any candidate file already exists on disk
+    for url in candidates:
+        name = _local_filename(object_id, url)
+        path = output_dir / name
+        if path.exists():
+            print(f"  [SKIP] exists: {name}")
+            return object_id, f"{url_prefix}/{name}"
 
     if dry_run:
-        print(f"  [DRY-RUN] would download: {remote_url} -> {dest_path}")
+        print(f"  [DRY-RUN] would download: {remote_url} -> {output_dir / _local_filename(object_id, remote_url)}")
         return object_id, None
 
     async with sem:
         try:
-            async with session.get(
-                remote_url,
-                headers=_HEADERS,
-                timeout=aiohttp.ClientTimeout(total=30),
-            ) as resp:
-                if resp.status != 200:
-                    print(f"  [FAIL] HTTP {resp.status}: {remote_url}")
-                    return object_id, None
-                data = await resp.read()
+            for url in candidates:
+                async with session.get(
+                    url,
+                    headers=_HEADERS,
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as resp:
+                    if resp.status != 200:
+                        continue
+                    data = await resp.read()
+                    actual_filename = _local_filename(object_id, url)
+                    actual_dest = output_dir / actual_filename
+                    actual_local_url = f"{url_prefix}/{actual_filename}"
+                    actual_dest.write_bytes(data)
+                    print(f"  [OK] saved: {actual_filename} ({len(data):,} bytes)")
+                    await asyncio.sleep(THUMBNAIL_DELAY)
+                    return object_id, actual_local_url
 
-            dest_path.write_bytes(data)
-            print(f"  [OK] saved: {filename} ({len(data):,} bytes)")
-            return object_id, local_url
+            print(f"  [FAIL] HTTP {resp.status}: {remote_url}")
+            await asyncio.sleep(THUMBNAIL_DELAY)
+            return object_id, None
 
         except Exception as exc:
             print(f"  [ERR] {object_id}: {exc}")
+            await asyncio.sleep(THUMBNAIL_DELAY)
             return object_id, None
 
 
 async def download_thumbnails(
     games: list[dict],
     *,
-    concurrency: int = CONCURRENCY,
+    concurrency: int = THUMBNAIL_CONCURRENCY,
     output_dir: Path = THUMBNAIL_OUTPUT_DIR,
     url_prefix: str = THUMBNAIL_URL_PREFIX,
     dry_run: bool = False,
@@ -129,6 +146,7 @@ async def download_thumbnails(
         return
 
     updated = 0
+    marked_pending = 0
     for object_id, local_url in results:
         if local_url is not None:
             try:
@@ -136,8 +154,14 @@ async def download_thumbnails(
                 updated += 1
             except Exception as exc:
                 print(f"  [DB ERR] {object_id}: {exc}")
+        else:
+            try:
+                set_status_pending(object_id)
+                marked_pending += 1
+            except Exception as exc:
+                print(f"  [DB ERR] pending {object_id}: {exc}")
 
-    print(f"DB updated: {updated}/{len(games)} records.")
+    print(f"DB updated: {updated}/{len(games)} records. Marked pending: {marked_pending}.")
 
 
 async def main_async(dry_run: bool) -> None:

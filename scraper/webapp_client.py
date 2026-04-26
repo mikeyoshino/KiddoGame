@@ -23,7 +23,10 @@ _TITLE_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 
 async def check_title_duplicates(titles: list[str]) -> list[str]:
-    """Return titles from the given list that already exist in the DB."""
+    """Return titles from the given list that already exist in the DB.
+
+    Returns an empty list (no duplicates) if the endpoint is not yet deployed (404).
+    """
     if not titles:
         return []
     async with aiohttp.ClientSession() as session:
@@ -32,6 +35,9 @@ async def check_title_duplicates(titles: list[str]) -> list[str]:
             json=titles,
             timeout=_TITLE_TIMEOUT,
         ) as resp:
+            if resp.status == 404:
+                print("  [WARN] check-title-duplicates endpoint not deployed — skipping duplicate-title check")
+                return []
             resp.raise_for_status()
             return await resp.json()
 
