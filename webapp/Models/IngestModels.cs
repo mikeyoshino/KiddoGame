@@ -13,7 +13,13 @@ public record IngestGame(
     string[] Languages,
     string[] Gender,
     string[] AgeGroup,
-    string? FirstActiveDate = null
+    string? FirstActiveDate = null,
+    string Provider = "GameDistribute",
+    string? ProviderGameId = null,
+    string? GameUrl = null,
+    string? DescriptionTh = null,
+    string? InstructionTh = null,
+    string? TranslationStatus = null
 );
 
 public record IngestBatchRequest(IngestGame[] Games);

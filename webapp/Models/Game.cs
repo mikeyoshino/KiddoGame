@@ -20,6 +20,10 @@ public class Game
     public string Status { get; set; } = "";
     public int ViewCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string Provider { get; set; } = "GameDistribute";
+    public string? ProviderGameId { get; set; }
+    public string? StoredGameUrl { get; set; }
 
-    public string GameUrl => $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://kiddogame.net/games/{Slug}/";
+    public string GameUrl => StoredGameUrl
+        ?? $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://kiddogame.net/games/{Slug}/";
 }
