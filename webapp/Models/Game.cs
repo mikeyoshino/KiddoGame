@@ -24,6 +24,10 @@ public class Game
     public string? ProviderGameId { get; set; }
     public string? StoredGameUrl { get; set; }
 
-    public string GameUrl => StoredGameUrl
-        ?? $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://kiddogame.net/games/{Slug}/";
+    public string? GameUrl => StoredGameUrl
+        ?? (Provider == "GameDistribute"
+            ? $"https://html5.gamedistribution.com/{ObjectId}/?gd_sdk_referrer_url=https://kiddogame.net/games/{Slug}/"
+            : Provider == "GamePix"
+                ? $"https://play.gamepix.com/{Slug}/embed?sid=22322"
+                : null);
 }
