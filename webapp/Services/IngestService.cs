@@ -208,7 +208,12 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
 
         var supabaseUrl = config["Supabase:Url"]!;
         var serviceKey = config["Supabase:ServiceKey"]!;
-        var quotedTitles = string.Join(",", titles.Select(t => $"\"{t.Replace("\"", "\\\"")}\""));
+
+        // Build the in-list with quoted, URL-encoded titles to handle special chars
+        // e.g. "Bob's World" -> %22Bob%27s+World%22
+        var quotedTitles = string.Join(
+            ",",
+            titles.Select(t => Uri.EscapeDataString($"\"{t}\"")));
 
         var client = httpFactory.CreateClient("supabase-ingest");
         var request = new HttpRequestMessage(HttpMethod.Get,
