@@ -9,6 +9,22 @@ builder.Services.AddRazorComponents()
 builder.Services.AddScoped<LanguageService>();
 builder.Services.AddScoped<FavoritesService>();
 
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+});
+
+builder.Services.AddHttpClient("thumbnail", client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHttpClient("supabase-ingest");
+builder.Services.AddHttpClient("openai");
+builder.Services.AddScoped<IngestService>();
+
 builder.Services.AddHttpClient<GameService>((sp, client) =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -30,6 +46,39 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.MapPost("/api/ingest/filter-new", async (string[] ids, IngestService ingestSvc) =>
+{
+    var newIds = await ingestSvc.FilterNewAsync(ids);
+    return Results.Ok(newIds);
+});
+
+app.MapPost("/api/ingest/batch", async (
+    Kiddo.Web.Models.IngestBatchRequest req, IngestService ingestSvc) =>
+{
+    var games = req.Games;
+
+    var thumbUrls = await Task.WhenAll(
+        games.Select(g => ingestSvc.DownloadThumbnailAsync(g.ObjectId, g.ThumbnailUrl)));
+
+    var thumbnails = games
+        .Select((g, i) => (g.ObjectId, Url: thumbUrls[i]))
+        .ToDictionary(x => x.ObjectId, x => x.Url);
+
+    var translations = await ingestSvc.TranslateBatchAsync(games);
+
+    await ingestSvc.UpsertGamesAsync(games, thumbnails, translations);
+
+    var results = games.Select(g =>
+    {
+        var thumbOk = thumbnails.TryGetValue(g.ObjectId, out var url) && url != null;
+        return thumbOk
+            ? new Kiddo.Web.Models.IngestResult(g.ObjectId, true)
+            : new Kiddo.Web.Models.IngestResult(g.ObjectId, false, "thumbnail: all extensions failed");
+    }).ToArray();
+
+    return Results.Ok(new Kiddo.Web.Models.IngestBatchResponse(results));
+});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

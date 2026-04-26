@@ -10,7 +10,7 @@ public class GameTests
     {
         var game = new Game { ObjectId = "f078134f39634ca78dcd4a8479a314a2", Slug = "test-game" };
         Assert.Equal(
-            "https://html5.gamedistribution.com/f078134f39634ca78dcd4a8479a314a2/?gd_sdk_referrer_url=https://gamedistribution.com/games/test-game/",
+            "https://html5.gamedistribution.com/f078134f39634ca78dcd4a8479a314a2/?gd_sdk_referrer_url=https://kiddogame.net/games/test-game/",
             game.GameUrl);
     }
 
