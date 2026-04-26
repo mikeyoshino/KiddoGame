@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Kiddo.Web.Models;
 using Microsoft.Extensions.Configuration;
@@ -159,7 +160,9 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
         var rows = games.Select(g =>
         {
             var thumbOk = thumbnails.TryGetValue(g.ObjectId, out var localUrl) && localUrl != null;
-            var hasTrans = translations.TryGetValue(g.ObjectId, out var tr);
+            var preTranslated = g.TranslationStatus != null;
+            var inTrans = translations.TryGetValue(g.ObjectId, out var tr);
+            var hasTrans = !preTranslated && inTrans;
             return new
             {
                 object_id = g.ObjectId,
@@ -169,9 +172,9 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
                 thumbnail_url = thumbOk ? localUrl : g.ThumbnailUrl,
                 description = g.Description,
                 instruction = g.Instruction,
-                description_th = hasTrans ? tr.DescTh : (string?)null,
-                instruction_th = hasTrans ? tr.InstrTh : (string?)null,
-                translation_status = hasTrans ? "translated" : (string?)null,
+                description_th = preTranslated ? g.DescriptionTh : (hasTrans ? tr.DescTh : null),
+                instruction_th = preTranslated ? g.InstructionTh : (hasTrans ? tr.InstrTh : null),
+                translation_status = preTranslated ? g.TranslationStatus : (hasTrans ? "translated" : (string?)null),
                 categories = g.Categories,
                 tags = g.Tags,
                 languages = g.Languages,
@@ -179,13 +182,17 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
                 age_group = g.AgeGroup,
                 status = thumbOk ? "done" : "pending",
                 created_at = g.FirstActiveDate,
+                provider = g.Provider,
+                provider_game_id = g.ProviderGameId,
+                game_url = g.GameUrl,
             };
         }).ToArray();
 
         var client = httpFactory.CreateClient("supabase-ingest");
+        var jsonOptions = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         var request = new HttpRequestMessage(HttpMethod.Post, $"{supabaseUrl}/rest/v1/games")
         {
-            Content = JsonContent.Create(rows),
+            Content = JsonContent.Create(rows, options: jsonOptions),
         };
         request.Headers.Add("apikey", serviceKey);
         request.Headers.Add("Authorization", $"Bearer {serviceKey}");

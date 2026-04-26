@@ -263,6 +263,42 @@ public class IngestServiceTests
         Assert.Contains("/images/games/abc.jpg", body);
     }
 
+    // ── UpsertGamesAsync — provider fields + pre-translation ─────────────────
+
+    [Fact]
+    public async Task UpsertGamesAsync_StoresProviderFieldsAndPreTranslation()
+    {
+        var captured = new List<HttpRequestMessage>();
+        var config = BuildConfig("/tmp", "/images",
+            supabaseUrl: "https://fake.supabase.co", serviceKey: "svc");
+        var factory = MakeFactory(new CapturingHandler("[]", captured));
+        var svc = new IngestService(factory, config);
+
+        var game = new IngestGame(
+            "gp_123", "cool-game", "Cool Game", null,
+            "http://img.gamepix.com/img.jpg", "Fun game", null,
+            ["Action"], [], [], [], [],
+            Provider: "GamePix",
+            ProviderGameId: "123",
+            GameUrl: "https://gamepix.com/play/cool-game",
+            DescriptionTh: "เกมสนุก",
+            InstructionTh: null,
+            TranslationStatus: "translated"
+        );
+
+        await svc.UpsertGamesAsync(
+            [game],
+            new Dictionary<string, string?> { ["gp_123"] = "/images/games/gp_123.jpg" },
+            []);
+
+        var body = await captured[0].Content!.ReadAsStringAsync();
+        Assert.Contains("\"provider\":\"GamePix\"", body);
+        Assert.Contains("\"provider_game_id\":\"123\"", body);
+        Assert.Contains("\"game_url\":\"https://gamepix.com/play/cool-game\"", body);
+        Assert.Contains("\"description_th\":\"เกมสนุก\"", body);
+        Assert.Contains("\"translation_status\":\"translated\"", body);
+    }
+
     // ── TranslateBatchAsync — GamePix skip ───────────────────────────────────
 
     [Fact]
