@@ -63,28 +63,38 @@ app.MapPost("/api/ingest/check-title-duplicates", async (
 app.MapPost("/api/ingest/batch", async (
     Kiddo.Web.Models.IngestBatchRequest req, IngestService ingestSvc) =>
 {
-    var games = req.Games;
-
-    var thumbUrls = await Task.WhenAll(
-        games.Select(g => ingestSvc.DownloadThumbnailAsync(g.ObjectId, g.ThumbnailUrl)));
-
-    var thumbnails = games
-        .Select((g, i) => (g.ObjectId, Url: thumbUrls[i]))
-        .ToDictionary(x => x.ObjectId, x => x.Url);
-
-    var translations = await ingestSvc.TranslateBatchAsync(games);
-
-    await ingestSvc.UpsertGamesAsync(games, thumbnails, translations);
-
-    var results = games.Select(g =>
+    try
     {
-        var thumbOk = thumbnails.TryGetValue(g.ObjectId, out var url) && url != null;
-        return thumbOk
-            ? new Kiddo.Web.Models.IngestResult(g.ObjectId, true)
-            : new Kiddo.Web.Models.IngestResult(g.ObjectId, false, "thumbnail: all extensions failed");
-    }).ToArray();
+        var games = req.Games;
 
-    return Results.Ok(new Kiddo.Web.Models.IngestBatchResponse(results));
+        var thumbUrls = await Task.WhenAll(
+            games.Select(g => ingestSvc.DownloadThumbnailAsync(g.ObjectId, g.ThumbnailUrl)));
+
+        var thumbnails = games
+            .Select((g, i) => (g.ObjectId, Url: thumbUrls[i]))
+            .ToDictionary(x => x.ObjectId, x => x.Url);
+
+        var translations = await ingestSvc.TranslateBatchAsync(games);
+
+        await ingestSvc.UpsertGamesAsync(games, thumbnails, translations);
+
+        var results = games.Select(g =>
+        {
+            var thumbOk = thumbnails.TryGetValue(g.ObjectId, out var url) && url != null;
+            return thumbOk
+                ? new Kiddo.Web.Models.IngestResult(g.ObjectId, true)
+                : new Kiddo.Web.Models.IngestResult(g.ObjectId, false, "thumbnail: all extensions failed");
+        }).ToArray();
+
+        return Results.Ok(new Kiddo.Web.Models.IngestBatchResponse(results));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            detail: $"{ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}",
+            title: "Batch ingest failed",
+            statusCode: 500);
+    }
 }).DisableAntiforgery();
 
 app.MapRazorComponents<App>()
