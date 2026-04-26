@@ -177,6 +177,7 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
                 gender = g.Gender,
                 age_group = g.AgeGroup,
                 status = thumbOk ? "done" : "pending",
+                created_at = g.FirstActiveDate,
             };
         }).ToArray();
 

@@ -19,6 +19,7 @@ _QUERY = (
     "  objectID\n  title\n  company\n  visible\n"
     "  slugs { name __typename }\n"
     "  assets { name __typename }\n"
+    "  firstActiveDate\n"
     "  __typename\n}\n\n"
     "query GetGamesSearched($id: String! = \"\", $perPage: Int! = 0, $page: Int! = 0, "
     "$search: String! = \"\", $UIfilter: UIFilterInput! = {}, $filters: GameSearchFiltersFlat! = {}) {\n"
@@ -75,6 +76,7 @@ def parse_hits(data: dict) -> list[dict]:
             "title": hit["title"],
             "company": hit.get("company"),
             "thumbnail_url": _pick_thumbnail(hit.get("assets", []), object_id),
+            "first_active_date": hit.get("firstActiveDate"),
             "status": "pending",
         })
     return games

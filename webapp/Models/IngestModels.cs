@@ -12,7 +12,8 @@ public record IngestGame(
     string[] Tags,
     string[] Languages,
     string[] Gender,
-    string[] AgeGroup
+    string[] AgeGroup,
+    string? FirstActiveDate = null
 );
 
 public record IngestBatchRequest(IngestGame[] Games);
