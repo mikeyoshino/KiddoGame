@@ -47,11 +47,11 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.MapPost("/api/ingest/filter-new", async (string[] ids, IngestService ingestSvc) =>
+app.MapPost("/api/ingest/filter-new", async ([Microsoft.AspNetCore.Mvc.FromBody] string[] ids, IngestService ingestSvc) =>
 {
     var newIds = await ingestSvc.FilterNewAsync(ids);
     return Results.Ok(newIds);
-});
+}).DisableAntiforgery();
 
 app.MapPost("/api/ingest/batch", async (
     Kiddo.Web.Models.IngestBatchRequest req, IngestService ingestSvc) =>
@@ -78,7 +78,7 @@ app.MapPost("/api/ingest/batch", async (
     }).ToArray();
 
     return Results.Ok(new Kiddo.Web.Models.IngestBatchResponse(results));
-});
+}).DisableAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
