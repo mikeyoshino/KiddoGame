@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import time
 
 from config import CONCURRENCY, PAGE_DELAY
@@ -7,6 +8,17 @@ from detail_fetcher import fetch_details_batch
 from webapp_client import filter_new, post_batch
 
 _BATCH_SIZE = 10
+_MAX_PAGE = 333  # GD API blocks pages beyond ~10,000 results
+
+# Date slices that together cover the full GD catalog.
+# Each slice has <10,000 games so pagination works within each.
+_DATE_SLICES = [
+    ("2017-01-01", "2019-01-01"),
+    ("2019-01-01", "2021-01-01"),
+    ("2021-01-01", "2023-01-01"),
+    ("2023-01-01", "2025-01-01"),
+    ("2025-01-01", "2027-01-01"),
+]
 
 
 async def _send_batches(games: list[dict]) -> None:
@@ -18,19 +30,17 @@ async def _send_batches(games: list[dict]) -> None:
             print(f"  [{status}] {r['object_id']}")
 
 
-async def scrape_new_games() -> None:
-    print("Starting GraphQL listing scrape...")
-    data = fetch_page(1)
-    total_pages = get_total_pages(data)
-    print(f"Total pages: {total_pages}")
-
+async def _scrape_pages(total_pages: int, filters: dict | None = None) -> None:
     for page in range(total_pages, 0, -1):
-        print(f"Page {page}/{total_pages}...")
+        label = f"Page {page}/{total_pages}"
+        if filters:
+            label += f" (filter: {filters})"
+        print(f"{label}...")
         try:
-            data = fetch_page(page)
+            data = fetch_page(page, filters=filters)
             hits = parse_hits(data)
         except ValueError as e:
-            print(f"  [WARN] Skipping page {page}: {e}")
+            print(f"  [WARN] Skipping: {e}")
             time.sleep(PAGE_DELAY)
             continue
 
@@ -60,11 +70,33 @@ async def scrape_new_games() -> None:
         await _send_batches(full_games)
         time.sleep(PAGE_DELAY)
 
+
+async def scrape_new_games() -> None:
+    print("Starting new-games scrape (pages 1–333)...")
+    data = fetch_page(1)
+    total_pages = min(get_total_pages(data), _MAX_PAGE)
+    print(f"Scraping {total_pages} pages...")
+    await _scrape_pages(total_pages)
     print("Scrape complete.")
 
 
+async def scrape_all_games() -> None:
+    print("Starting full catalog scrape via date slices...")
+    for start, end in _DATE_SLICES:
+        filters = {"publishedAt": {"StartDate": start, "EndDate": end}}
+        print(f"\n--- Slice {start} → {end} ---")
+        data = fetch_page(1, filters=filters)
+        total_pages = get_total_pages(data)
+        print(f"  {data['data']['gamesSearched']['nbHits']} games, {total_pages} pages")
+        await _scrape_pages(total_pages, filters=filters)
+    print("\nFull catalog scrape complete.")
+
+
 async def main() -> None:
-    await scrape_new_games()
+    if "--all" in sys.argv:
+        await scrape_all_games()
+    else:
+        await scrape_new_games()
 
 
 if __name__ == "__main__":

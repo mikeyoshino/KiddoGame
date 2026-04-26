@@ -30,12 +30,12 @@ _QUERY = (
 )
 
 
-def fetch_page(page: int, per_page: int = 30) -> dict:
+def fetch_page(page: int, per_page: int = 30, filters: dict | None = None) -> dict:
     payload = {
         "operationName": "GetGamesSearched",
         "variables": {
             "id": "", "perPage": per_page, "page": page,
-            "search": "", "UIfilter": {}, "filters": {}
+            "search": "", "UIfilter": {}, "filters": filters or {}
         },
         "query": _QUERY,
     }
@@ -44,8 +44,22 @@ def fetch_page(page: int, per_page: int = 30) -> dict:
     return response.json()
 
 
+def _pick_thumbnail(assets: list[dict], object_id: str) -> str:
+    names = [a["name"] for a in assets]
+    for size in ("512x384", "512x512", "200x120"):
+        for name in names:
+            if size in name:
+                return f"https://img.gamedistribution.com/{name}"
+    return f"https://img.gamedistribution.com/{object_id}-512x384.jpg"
+
+
 def parse_hits(data: dict) -> list[dict]:
-    hits = data["data"]["gamesSearched"]["hits"]
+    try:
+        hits = data["data"]["gamesSearched"]["hits"]
+    except (KeyError, TypeError):
+        import json
+        preview = json.dumps(data)[:500]
+        raise ValueError(f"Unexpected API response shape: {preview}")
     games = []
     for hit in hits:
         if not hit.get("visible"):
@@ -60,7 +74,7 @@ def parse_hits(data: dict) -> list[dict]:
             "slug": slug,
             "title": hit["title"],
             "company": hit.get("company"),
-            "thumbnail_url": f"https://img.gamedistribution.com/{object_id}-512x384.jpg",
+            "thumbnail_url": _pick_thumbnail(hit.get("assets", []), object_id),
             "status": "pending",
         })
     return games
