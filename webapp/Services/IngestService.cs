@@ -201,4 +201,29 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
         var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
+
+    public async Task<string[]> CheckTitleDuplicatesAsync(string[] titles)
+    {
+        if (titles.Length == 0) return [];
+
+        var supabaseUrl = config["Supabase:Url"]!;
+        var serviceKey = config["Supabase:ServiceKey"]!;
+        var quotedTitles = string.Join(",", titles.Select(t => $"\"{t.Replace("\"", "\\\"")}\""));
+
+        var client = httpFactory.CreateClient("supabase-ingest");
+        var request = new HttpRequestMessage(HttpMethod.Get,
+            $"{supabaseUrl}/rest/v1/games?select=title&title=in.({quotedTitles})");
+        request.Headers.Add("apikey", serviceKey);
+        request.Headers.Add("Authorization", $"Bearer {serviceKey}");
+
+        var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var content = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(content);
+
+        return doc.RootElement.EnumerateArray()
+            .Select(r => r.GetProperty("title").GetString()!)
+            .ToArray();
+    }
 }

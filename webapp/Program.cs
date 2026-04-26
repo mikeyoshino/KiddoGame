@@ -53,6 +53,13 @@ app.MapPost("/api/ingest/filter-new", async ([Microsoft.AspNetCore.Mvc.FromBody]
     return Results.Ok(newIds);
 }).DisableAntiforgery();
 
+app.MapPost("/api/ingest/check-title-duplicates", async (
+    [Microsoft.AspNetCore.Mvc.FromBody] string[] titles, IngestService ingestSvc) =>
+{
+    var duplicates = await ingestSvc.CheckTitleDuplicatesAsync(titles);
+    return Results.Ok(duplicates);
+}).DisableAntiforgery();
+
 app.MapPost("/api/ingest/batch", async (
     Kiddo.Web.Models.IngestBatchRequest req, IngestService ingestSvc) =>
 {

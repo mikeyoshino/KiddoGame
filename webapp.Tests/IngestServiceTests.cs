@@ -263,6 +263,37 @@ public class IngestServiceTests
         Assert.Contains("/images/games/abc.jpg", body);
     }
 
+    // ── CheckTitleDuplicatesAsync ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task CheckTitleDuplicatesAsync_ReturnsExistingTitles()
+    {
+        var supabaseJson = """[{"title":"Angry Birds"},{"title":"Fruit Ninja"}]""";
+        var config = BuildConfig("/tmp", "/images",
+            supabaseUrl: "https://fake.supabase.co", serviceKey: "svc");
+        var factory = MakeFactory(new FakeHandler(supabaseJson));
+        var svc = new IngestService(factory, config);
+
+        var result = await svc.CheckTitleDuplicatesAsync(["Angry Birds", "New Game", "Fruit Ninja"]);
+
+        Assert.Equal(2, result.Length);
+        Assert.Contains("Angry Birds", result);
+        Assert.Contains("Fruit Ninja", result);
+    }
+
+    [Fact]
+    public async Task CheckTitleDuplicatesAsync_EmptyInputReturnsEmpty()
+    {
+        var config = BuildConfig("/tmp", "/images",
+            supabaseUrl: "https://fake.supabase.co", serviceKey: "svc");
+        var factory = MakeFactory(new AssertNotCalledHandler());
+        var svc = new IngestService(factory, config);
+
+        var result = await svc.CheckTitleDuplicatesAsync([]);
+
+        Assert.Empty(result);
+    }
+
     // ── UpsertGamesAsync — provider fields + pre-translation ─────────────────
 
     [Fact]
