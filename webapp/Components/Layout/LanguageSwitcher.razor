@@ -44,6 +44,7 @@
         if (!firstRender) return;
         var code = await JS.InvokeAsync<string>("getLang");
         LangSvc.SetLanguage(code == "th" ? Lang.Thai : Lang.English);
+        StateHasChanged();
     }
 
     private void ToggleDropdown() => _dropdownOpen = !_dropdownOpen;
