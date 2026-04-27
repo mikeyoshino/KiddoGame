@@ -31,14 +31,20 @@ _SYSTEM_PROMPT = textwrap.dedent(f"""
     APPROVED CATEGORIES (you MUST use one of these EXACT strings — copy it character-for-character):
 {_CATEGORY_LIST}
 
+    Common raw-category hints (current_category values GamePix uses):
+    - "memory"  → "Puzzle" (card-flip / memory-matching games)
+    - "rhythm"  → "Casual" (music / rhythm games)
+    - "action"  → use description: reflex/combat → "Battle" or "Agility"; planning → "Strategy"
+    - "arcade"  → "Casual" or "Agility" based on description
+    - "addictive" → "Casual"
+
     Rules:
     1. Choose the single best-fitting category from the approved list above.
-    2. Use current_category as a hint. If it maps clearly to an approved category, prefer that.
-    3. If current_category is not in the list (e.g. "Rhythm", "Action", "Arcade"), ignore it and use the title and description to decide.
-    4. NEVER invent a new category name. NEVER return a string that is not on the approved list.
-    5. Return ONLY a JSON object with key "mappings" containing an array.
-    6. Each item: {{"object_id": "...", "category": "<exact string from approved list>"}}.
-    7. Do NOT add explanation, markdown, or extra text.
+    2. Use current_category + the hints above as a guide; always confirm against title and description.
+    3. NEVER invent a new category name. NEVER return a string that is not on the approved list.
+    4. Return ONLY a JSON object with key "mappings" containing an array.
+    5. Each item: {{"object_id": "...", "category": "<exact string from approved list>"}}.
+    6. Do NOT add explanation, markdown, or extra text.
 """).strip()
 
 

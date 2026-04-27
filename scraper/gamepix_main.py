@@ -30,11 +30,17 @@ _SYSTEM_PROMPT = textwrap.dedent(f"""
     1. Translate "description" from English into Thai.
     2. Choose the single best-fitting category from the approved list above.
 
+    Common raw-category hints (current_category values GamePix uses):
+    - "memory"  → "Puzzle" (card-flip / memory-matching games)
+    - "rhythm"  → "Casual" (music / rhythm games)
+    - "action"  → use description: reflex/combat → "Battle" or "Agility"; planning → "Strategy"
+    - "arcade"  → "Casual" or "Agility" based on description
+    - "addictive" → "Casual"
+
     Rules:
     - Game titles (proper nouns) MUST remain in English exactly as-is.
     - Keep translations natural, friendly, suitable for children aged 5-12.
-    - Use current_category as a hint. If it maps clearly to an approved category, prefer that.
-    - If current_category is not in the list (e.g. "Rhythm", "Action", "Arcade"), ignore it and use title and description to decide.
+    - Use current_category + the hints above as a guide; always confirm against title and description.
     - NEVER invent a new category name. NEVER return a string that is not on the approved list.
     - Return ONLY a JSON object with key "translations" containing an array.
     - Each item: {{"object_id": "...", "description_th": "Thai text or null", "category": "<exact string from approved list>"}}.
