@@ -101,12 +101,15 @@
     </script>
     <script>
         window.getLang = function () {
+            var match = document.cookie.match(/(?:^|;\s*)lang=([^;]*)/);
+            if (match) return match[1];
             var stored = localStorage.getItem("lang");
             if (stored) return stored;
             return navigator.language.startsWith("th") ? "th" : "en";
         };
         window.setLang = function (lang) {
             localStorage.setItem("lang", lang);
+            document.cookie = "lang=" + lang + "; path=/; max-age=31536000; SameSite=Lax";
         };
     </script>
 </body>

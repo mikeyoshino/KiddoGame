@@ -43,8 +43,14 @@
     {
         if (!firstRender) return;
         var code = await JS.InvokeAsync<string>("getLang");
-        LangSvc.SetLanguage(code == "th" ? Lang.Thai : Lang.English);
-        StateHasChanged();
+        var lang = code == "th" ? Lang.Thai : Lang.English;
+        // Ensure cookie is written (covers first-time visitors with no cookie yet)
+        await JS.InvokeVoidAsync("setLang", code);
+        if (lang != LangSvc.Current)
+        {
+            LangSvc.SetLanguage(lang);
+            StateHasChanged();
+        }
     }
 
     private void ToggleDropdown() => _dropdownOpen = !_dropdownOpen;
