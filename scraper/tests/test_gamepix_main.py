@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 import gamepix_main
 
 
-# ��─ Progress helpers ──────────────────────────────────────────────────────────
+# ── Progress helpers ──────────────────────────────────────────────────────────
 
 def test_load_progress_returns_zero_when_no_file(tmp_path):
     with patch.object(gamepix_main, "PROGRESS_FILE", tmp_path / "progress.json"):
@@ -35,21 +35,23 @@ def test_delete_progress_is_safe_when_no_file(tmp_path):
         gamepix_main._delete_progress()  # should not raise
 
 
-# ── Translation helper ────────────────────────────────────────────────────────
+# ── _translate_and_categorize_batch ──────────────────────────────────────────
 
-def test_translate_batch_raises_without_api_key():
+def test_translate_and_categorize_batch_raises_without_api_key():
     with patch.object(gamepix_main, "OPENAI_API_KEY", ""):
         with pytest.raises(ValueError, match="OPENAI_API_KEY"):
-            gamepix_main._translate_batch([{"object_id": "gp_1", "title": "X", "description": "Y"}])
+            gamepix_main._translate_and_categorize_batch([
+                {"object_id": "gp_1", "title": "X", "description": "Y", "categories": ["action"]}
+            ])
 
 
-def test_translate_batch_parses_response():
+def test_translate_and_categorize_batch_returns_description_th_and_category():
     fake_response = {
         "choices": [{
             "message": {
                 "content": json.dumps({
                     "translations": [
-                        {"object_id": "gp_1", "description_th": "เกมสนุก"}
+                        {"object_id": "gp_1", "description_th": "เกมสนุก", "category": "Shooter"}
                     ]
                 })
             }
@@ -61,14 +63,14 @@ def test_translate_batch_parses_response():
 
     with patch.object(gamepix_main, "OPENAI_API_KEY", "sk-test"), \
          patch("gamepix_main.requests.post", return_value=mock_resp):
-        result = gamepix_main._translate_batch([
-            {"object_id": "gp_1", "title": "Cool", "description": "Fun game"}
+        result = gamepix_main._translate_and_categorize_batch([
+            {"object_id": "gp_1", "title": "Gun Game", "description": "Shoot things", "categories": ["action"]}
         ])
 
-    assert result == {"gp_1": "เกมสนุก"}
+    assert result == {"gp_1": {"description_th": "เกมสนุก", "category": "Shooter"}}
 
 
-def test_translate_batch_returns_empty_for_missing_translation():
+def test_translate_and_categorize_batch_handles_missing_entry():
     fake_response = {
         "choices": [{"message": {"content": json.dumps({"translations": []})}}]
     }
@@ -78,8 +80,8 @@ def test_translate_batch_returns_empty_for_missing_translation():
 
     with patch.object(gamepix_main, "OPENAI_API_KEY", "sk-test"), \
          patch("gamepix_main.requests.post", return_value=mock_resp):
-        result = gamepix_main._translate_batch([
-            {"object_id": "gp_1", "title": "Cool", "description": "Fun"}
+        result = gamepix_main._translate_and_categorize_batch([
+            {"object_id": "gp_1", "title": "X", "description": "Y", "categories": ["action"]}
         ])
 
     assert result == {}

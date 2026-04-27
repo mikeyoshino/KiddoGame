@@ -7,24 +7,29 @@ from pathlib import Path
 
 import requests
 
+from categories import CANONICAL_CATEGORIES
 from config import OPENAI_API_KEY, PAGE_DELAY
 from gamepix_client import fetch_page, parse_items, has_next_page
 from webapp_client import filter_new, post_batch, check_title_duplicates
+from db import check_slug_duplicates
 
 PROGRESS_FILE = Path(__file__).parent / "gamepix_progress.json"
 _BATCH_SIZE = 10
 _OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 _OPENAI_MODEL = "gpt-4o-mini"
 
-_SYSTEM_PROMPT = textwrap.dedent("""
-    You are a professional Thai translator for a kids' game website.
-    Rules:
+_SYSTEM_PROMPT = textwrap.dedent(f"""
+    You are a professional Thai translator and category classifier for a kids' game website.
+    Tasks:
     1. Translate "description" from English into Thai.
-    2. Game titles (proper nouns) MUST remain in English exactly as-is.
-    3. Keep translations natural, friendly, suitable for children aged 5-12.
-    4. Return ONLY a JSON object with key "translations" containing an array.
-    5. Each item: {"object_id": "...", "description_th": "Thai text or null"}.
-    6. Do NOT add explanation, markdown, or extra text.
+    2. Map each game to exactly one category from this approved list: {', '.join(CANONICAL_CATEGORIES)}
+    Rules:
+    - Game titles (proper nouns) MUST remain in English exactly as-is.
+    - Keep translations natural, friendly, suitable for children aged 5-12.
+    - Use current_category if it clearly matches an approved category; otherwise use title and description.
+    - Return ONLY a JSON object with key "translations" containing an array.
+    - Each item: {{"object_id": "...", "description_th": "Thai text or null", "category": "one from the approved list"}}.
+    - Do NOT add explanation, markdown, or extra text.
 """).strip()
 
 
@@ -43,13 +48,22 @@ def _delete_progress() -> None:
     PROGRESS_FILE.unlink(missing_ok=True)
 
 
-def _translate_batch(games: list[dict]) -> dict[str, str | None]:
-    """Translate descriptions. Returns {object_id: description_th}. Raises on failure."""
+def _translate_and_categorize_batch(games: list[dict]) -> dict[str, dict]:
+    """Translate descriptions and remap categories in one OpenAI call.
+
+    Returns {object_id: {"description_th": str|None, "category": str|None}}.
+    Raises on failure.
+    """
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY not set in .env")
 
     items = [
-        {"object_id": g["object_id"], "title": g["title"], "description": g.get("description") or ""}
+        {
+            "object_id": g["object_id"],
+            "title": g["title"],
+            "description": g.get("description") or "",
+            "current_category": (g.get("categories") or [""])[0],
+        }
         for g in games
     ]
     user_msg = (
@@ -75,11 +89,17 @@ def _translate_batch(games: list[dict]) -> dict[str, str | None]:
 
     content = resp.json()["choices"][0]["message"]["content"]
     data = json.loads(content)
-    return {item["object_id"]: item.get("description_th") for item in data.get("translations", [])}
+    return {
+        item["object_id"]: {
+            "description_th": item.get("description_th"),
+            "category": item.get("category"),
+        }
+        for item in data.get("translations", [])
+    }
 
 
 async def _process_page(games: list[dict]) -> bool:
-    """Filter, translate, and post one page of games. Returns False if script should stop."""
+    """Filter, translate, categorize, and post one page of games. Returns False if script should stop."""
     object_ids = [g["object_id"] for g in games]
     new_ids = set(await filter_new(object_ids))
     new_games = [g for g in games if g["object_id"] in new_ids]
@@ -90,38 +110,52 @@ async def _process_page(games: list[dict]) -> bool:
 
     titles = [g["title"] for g in new_games]
     duplicate_titles = set(await check_title_duplicates(titles))
-    unique_games = [g for g in new_games if g["title"] not in duplicate_titles]
+    unique_games_by_title = [g for g in new_games if g["title"] not in duplicate_titles]
 
-    skipped_titles = len(new_games) - len(unique_games)
+    skipped_titles = len(new_games) - len(unique_games_by_title)
     if skipped_titles:
         print(f"  -> {skipped_titles} skipped (title exists in DB from another provider)")
+
+    slugs = [g["slug"] for g in unique_games_by_title]
+    duplicate_slugs = set(check_slug_duplicates(slugs))
+    unique_games = [g for g in unique_games_by_title if g["slug"] not in duplicate_slugs]
+
+    skipped_slugs = len(unique_games_by_title) - len(unique_games)
+    if skipped_slugs:
+        print(f"  -> {skipped_slugs} skipped (slug exists in DB from another provider)")
 
     if not unique_games:
         return True
 
-    # Translate all games for this page upfront; stop on failure
     translation_failed = False
-    translation_map: dict[str, str | None] = {}
+    translation_map: dict[str, dict] = {}
 
     for i in range(0, len(unique_games), _BATCH_SIZE):
         batch = unique_games[i: i + _BATCH_SIZE]
+        batch_num = i // _BATCH_SIZE + 1
+        total_batches = (len(unique_games) + _BATCH_SIZE - 1) // _BATCH_SIZE
+        print(f"  Translating batch {batch_num}/{total_batches} ({len(batch)} games)...", flush=True)
         try:
-            result = _translate_batch(batch)
+            result = _translate_and_categorize_batch(batch)
             translation_map.update(result)
         except Exception as e:
             print(f"  [ERROR] Translation failed: {e}")
             translation_failed = True
             break
 
-    # Attach translations (null for un-translated games if failure occurred)
     for g in unique_games:
-        g["description_th"] = translation_map.get(g["object_id"]) if not translation_failed else None
+        entry = translation_map.get(g["object_id"]) if not translation_failed else None
+        g["description_th"] = entry["description_th"] if entry else None
         g["instruction_th"] = None
         g["translation_status"] = "translated" if g["object_id"] in translation_map else None
+        if entry and entry.get("category") in CANONICAL_CATEGORIES:
+            g["categories"] = [entry["category"]]
 
-    # Post all games (even those with null translation — webapp just stores them)
     for i in range(0, len(unique_games), _BATCH_SIZE):
         batch = unique_games[i: i + _BATCH_SIZE]
+        batch_num = i // _BATCH_SIZE + 1
+        total_batches = (len(unique_games) + _BATCH_SIZE - 1) // _BATCH_SIZE
+        print(f"  Posting batch {batch_num}/{total_batches} ({len(batch)} games, downloading thumbnails)...", flush=True)
         results = await post_batch(batch)
         for r in results:
             status = "OK" if r["ok"] else f"FAIL: {r.get('error', 'unknown')}"
