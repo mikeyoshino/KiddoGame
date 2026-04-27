@@ -98,11 +98,20 @@ def _remap_category_batch(games: list[dict]) -> dict[str, str]:
     resp.raise_for_status()
     content = resp.json()["choices"][0]["message"]["content"]
     data = json.loads(content)
-    return {
-        item["object_id"]: item["category"]
-        for item in data.get("mappings", [])
-        if item.get("category") in CANONICAL_CATEGORIES
-    }
+
+    # Case-insensitive lookup so "shooter" or "Shooter" both resolve correctly
+    canonical_lower = {c.lower(): c for c in CANONICAL_CATEGORIES}
+
+    result = {}
+    for item in data.get("mappings", []):
+        oid = item.get("object_id")
+        raw_cat = item.get("category") or ""
+        canonical = canonical_lower.get(raw_cat.lower())
+        if canonical:
+            result[oid] = canonical
+        else:
+            print(f"   [WARN] OpenAI returned unknown category {raw_cat!r} for {oid}")
+    return result
 
 
 def _update_category(object_id: str, category: str) -> None:
