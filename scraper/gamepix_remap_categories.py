@@ -23,15 +23,22 @@ _PAGE = 1000
 
 _client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+_CATEGORY_LIST = "\n".join(f"  - {c}" for c in CANONICAL_CATEGORIES)
+
 _SYSTEM_PROMPT = textwrap.dedent(f"""
     You are a game category classifier for a kids' game website.
+
+    APPROVED CATEGORIES (you MUST use one of these EXACT strings — copy it character-for-character):
+{_CATEGORY_LIST}
+
     Rules:
-    1. Map each game to exactly one category from this approved list: {', '.join(CANONICAL_CATEGORIES)}
-    2. Use current_category first if it clearly matches an approved category (case-insensitive).
-    3. If current_category is ambiguous or not in the list, use title and description to decide.
-    4. Return ONLY a JSON object with key "mappings" containing an array.
-    5. Each item: {{"object_id": "...", "category": "one from the approved list"}}.
-    6. Do NOT add explanation, markdown, or extra text.
+    1. Choose the single best-fitting category from the approved list above.
+    2. Use current_category as a hint. If it maps clearly to an approved category, prefer that.
+    3. If current_category is not in the list (e.g. "Rhythm", "Action", "Arcade"), ignore it and use the title and description to decide.
+    4. NEVER invent a new category name. NEVER return a string that is not on the approved list.
+    5. Return ONLY a JSON object with key "mappings" containing an array.
+    6. Each item: {{"object_id": "...", "category": "<exact string from approved list>"}}.
+    7. Do NOT add explanation, markdown, or extra text.
 """).strip()
 
 

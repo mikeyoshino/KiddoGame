@@ -18,17 +18,26 @@ _BATCH_SIZE = 10
 _OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 _OPENAI_MODEL = "gpt-4o-mini"
 
+_CATEGORY_LIST = "\n".join(f"  - {c}" for c in CANONICAL_CATEGORIES)
+
 _SYSTEM_PROMPT = textwrap.dedent(f"""
     You are a professional Thai translator and category classifier for a kids' game website.
-    Tasks:
+
+    APPROVED CATEGORIES (you MUST use one of these EXACT strings — copy it character-for-character):
+{_CATEGORY_LIST}
+
+    Tasks per game:
     1. Translate "description" from English into Thai.
-    2. Map each game to exactly one category from this approved list: {', '.join(CANONICAL_CATEGORIES)}
+    2. Choose the single best-fitting category from the approved list above.
+
     Rules:
     - Game titles (proper nouns) MUST remain in English exactly as-is.
     - Keep translations natural, friendly, suitable for children aged 5-12.
-    - Use current_category if it clearly matches an approved category; otherwise use title and description.
+    - Use current_category as a hint. If it maps clearly to an approved category, prefer that.
+    - If current_category is not in the list (e.g. "Rhythm", "Action", "Arcade"), ignore it and use title and description to decide.
+    - NEVER invent a new category name. NEVER return a string that is not on the approved list.
     - Return ONLY a JSON object with key "translations" containing an array.
-    - Each item: {{"object_id": "...", "description_th": "Thai text or null", "category": "one from the approved list"}}.
+    - Each item: {{"object_id": "...", "description_th": "Thai text or null", "category": "<exact string from approved list>"}}.
     - Do NOT add explanation, markdown, or extra text.
 """).strip()
 
