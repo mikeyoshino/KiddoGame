@@ -91,11 +91,11 @@
                 @foreach (var game in _games)
                 {
                     <a href="/games/@game.Slug" class="game-card group cursor-pointer block">
-                        <div class="bg-indigo-50 rounded-[2.5rem] aspect-square flex items-center justify-center relative mb-3 transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-indigo-100 border border-transparent group-hover:border-white overflow-hidden">
+                        <div class="bg-indigo-50 rounded-2xl aspect-square flex items-center justify-center relative mb-3 transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-indigo-100 border border-transparent group-hover:border-white overflow-hidden">
                             @if (!string.IsNullOrEmpty(game.ThumbnailUrl))
                             {
                                 <img src="@game.ThumbnailUrl" alt="@game.Title"
-                                     class="w-full h-full object-cover rounded-3xl" />
+                                     class="w-full h-full object-cover rounded-2xl" />
                             }
                             else
                             {
