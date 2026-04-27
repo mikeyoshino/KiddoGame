@@ -199,7 +199,11 @@ public class IngestService(IHttpClientFactory httpFactory, IConfiguration config
         request.Headers.Add("Prefer", "resolution=merge-duplicates");
 
         var response = await client.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Supabase upsert failed with status {response.StatusCode}: {err}");
+        }
     }
 
     public async Task<string[]> CheckTitleDuplicatesAsync(string[] titles)
