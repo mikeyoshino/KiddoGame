@@ -1,6 +1,5 @@
 @inherits LayoutComponentBase
 @inject LanguageService LangSvc
-@implements IDisposable
 
 <div class="min-h-screen pb-20 md:pb-0">
     <header class="sticky top-0 bg-slate-50/90 backdrop-blur-sm z-40 px-6 py-4 max-w-7xl mx-auto w-full">
@@ -11,7 +10,7 @@
                     <span class="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
                         KiddoGame
                     </span>
-                    <p class="text-slate-400 text-sm font-light">@Strings.Get(LangSvc.Current, "tagline")</p>
+                    <p class="text-slate-400 text-sm font-light"><SiteTagline /></p>
                 </div>
             </a>
 
@@ -29,12 +28,3 @@
 
 <MobileNav />
 
-@code {
-    protected override void OnInitialized() =>
-        LangSvc.OnChanged += OnLanguageChanged;
-
-    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
-
-    public void Dispose() =>
-        LangSvc.OnChanged -= OnLanguageChanged;
-}

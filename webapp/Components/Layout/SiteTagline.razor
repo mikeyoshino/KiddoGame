@@ -1,0 +1,11 @@
+@rendermode InteractiveServer
+@inject LanguageService LangSvc
+@implements IDisposable
+
+@Strings.Get(LangSvc.Current, "tagline")
+
+@code {
+    protected override void OnInitialized() => LangSvc.OnChanged += OnLanguageChanged;
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => LangSvc.OnChanged -= OnLanguageChanged;
+}
