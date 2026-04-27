@@ -101,6 +101,17 @@ public class GameService(HttpClient http)
         }
     }
 
+    public async Task<int> GetTotalCountAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Head, "games?select=*&status=eq.done");
+        request.Headers.TryAddWithoutValidation("Prefer", "count=exact");
+        var response = await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var contentRange = response.Content.Headers.TryGetValues("Content-Range", out var values)
+            ? values.FirstOrDefault() : null;
+        return ParseTotal(contentRange);
+    }
+
     public async Task<List<string>> GetAllSlugsAsync()
     {
         var json = await http.GetStringAsync("games?select=slug&status=eq.done&limit=10000");

@@ -16,7 +16,7 @@
     @if (LangSvc.Current == Lang.Thai)
     {
         <p class="text-slate-500 text-sm leading-relaxed">
-            รวม <strong>เกมออนไลน์สำหรับเด็กฟรี</strong> กว่า 9,000 เกม เล่นได้เลยไม่ต้องดาวน์โหลด เปิดบนเบราว์เซอร์ได้ทันที
+            รวม <strong>เกมออนไลน์สำหรับเด็กฟรี</strong> กว่า @(_allGamesCount.ToString("N0")) เกม เล่นได้เลยไม่ต้องดาวน์โหลด เปิดบนเบราว์เซอร์ได้ทันที
         </p>
         <p class="text-slate-400 text-xs leading-relaxed">
             ครอบคลุมทุกประเภท ทั้งเกมการศึกษา เกมปริศนา เกมแข่งรถ เกมแต่งตัว เกมทำอาหาร เกมผจญภัย และอื่นๆ อีกมากมาย ปลอดภัยสำหรับเด็กทุกวัย
@@ -25,7 +25,7 @@
     else
     {
         <p class="text-slate-500 text-sm leading-relaxed">
-            Over 9,000 <strong>free online games for kids</strong> — play instantly in your browser, no download needed.
+            Over @(_allGamesCount.ToString("N0")) <strong>free online games for kids</strong> — play instantly in your browser, no download needed.
         </p>
         <p class="text-slate-400 text-xs leading-relaxed">
             Browse educational games, puzzles, racing, dress-up, cooking, adventure games and more. Safe and fun for kids of all ages.
@@ -180,6 +180,7 @@
     private int _page = 1;
     private int _total;
     private int _totalPages;
+    private int _allGamesCount;
     private bool _loading = true;
     private System.Threading.Timer? _debounce;
     private const int PageSize = 30;
@@ -198,7 +199,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _genres = await GameSvc.GetCategoriesAsync();
+        var categoriesTask = GameSvc.GetCategoriesAsync();
+        var countTask = GameSvc.GetTotalCountAsync();
+        await Task.WhenAll(categoriesTask, countTask);
+        _genres = categoriesTask.Result;
+        _allGamesCount = countTask.Result;
         await LoadGames();
     }
 
