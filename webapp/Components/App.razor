@@ -31,6 +31,15 @@
 
     <link href="_content/Blazor.Flags/flags.css" rel="stylesheet" />
     <HeadOutlet />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E9TSFWCCYV"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-E9TSFWCCYV');
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-800">
     <Routes />
